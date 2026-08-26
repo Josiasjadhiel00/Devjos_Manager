@@ -1,0 +1,667 @@
+import React, { useState } from 'react';
+import {
+  Settings as SettingsIcon,
+  Building,
+  Mail,
+  Phone,
+  MapPin,
+  DollarSign,
+  Percent,
+  HardDrive,
+  Database,
+  Download,
+  Upload,
+  Save,
+  CheckCircle2,
+  Bell,
+  Sparkles,
+  RotateCcw,
+  Server,
+  Activity,
+  FolderTree,
+  Shield,
+  Key,
+  Globe,
+  Share2,
+  RefreshCw,
+  AlertCircle,
+} from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { NasBrandType } from '../../types';
+
+export const SettingsView: React.FC = () => {
+  const { settings, updateSettings, testNasConnection, createNasFoldersTree, resetToDemoData } = useApp();
+
+  const [formData, setFormData] = useState({ ...settings });
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isTestingNas, setIsTestingNas] = useState(false);
+  const [nasTestResult, setNasTestResult] = useState<{
+    success: boolean;
+    latencyMs: number;
+    message: string;
+  } | null>(null);
+  const [isCreatingFolders, setIsCreatingFolders] = useState(false);
+  const [foldersCreatedSuccess, setFoldersCreatedSuccess] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSettings(formData);
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  const handleNasBrandChange = (brand: NasBrandType) => {
+    let defaultPort = 5001;
+    let defaultProtocol: 'HTTPS' | 'HTTP' | 'WebDAV' | 'SMB/CIFS' | 'FTP' = 'HTTPS';
+    let defaultPath = '/volume1/DevJos_Studio_Storage';
+
+    if (brand === 'Synology') {
+      defaultPort = 5001;
+      defaultProtocol = 'HTTPS';
+      defaultPath = '/volume1/DevJos_Studio_Storage';
+    } else if (brand === 'TrueNAS') {
+      defaultPort = 443;
+      defaultProtocol = 'HTTPS';
+      defaultPath = '/mnt/pool0/devjos-vault';
+    } else if (brand === 'QNAP') {
+      defaultPort = 8080;
+      defaultProtocol = 'HTTP';
+      defaultPath = '/share/CACHEDEV1_DATA/DevJos_Studio';
+    } else if (brand === 'WebDAV') {
+      defaultPort = 443;
+      defaultProtocol = 'WebDAV';
+      defaultPath = '/webdav/devjos_storage';
+    } else if (brand === 'SMB') {
+      defaultPort = 445;
+      defaultProtocol = 'SMB/CIFS';
+      defaultPath = '//192.168.1.120/DevJos_Studio';
+    }
+
+    setFormData({
+      ...formData,
+      nasBrand: brand,
+      nasPort: defaultPort,
+      nasProtocol: defaultProtocol,
+      nasRootFolder: defaultPath,
+    });
+  };
+
+  const handleTestNas = async () => {
+    setIsTestingNas(true);
+    setNasTestResult(null);
+    try {
+      // First save current form data for NAS
+      updateSettings({
+        nasStorageEnabled: formData.nasStorageEnabled,
+        nasBrand: formData.nasBrand,
+        nasHost: formData.nasHost,
+        nasPort: formData.nasPort,
+        nasProtocol: formData.nasProtocol,
+        nasRootFolder: formData.nasRootFolder,
+        nasUsername: formData.nasUsername,
+        nasSharedLinksPrefix: formData.nasSharedLinksPrefix,
+      });
+
+      const result = await testNasConnection();
+      setNasTestResult(result);
+    } catch (err: any) {
+      setNasTestResult({
+        success: false,
+        latencyMs: 0,
+        message: err?.message || 'Error al intentar conectar con el servidor NAS.',
+      });
+    } finally {
+      setIsTestingNas(false);
+    }
+  };
+
+  const handleCreateFoldersTree = async () => {
+    setIsCreatingFolders(true);
+    try {
+      await createNasFoldersTree();
+      setFoldersCreatedSuccess(true);
+      setTimeout(() => setFoldersCreatedSuccess(false), 4000);
+    } finally {
+      setIsCreatingFolders(false);
+    }
+  };
+
+  const handleExportBackup = () => {
+    const fullBackup = localStorage.getItem('devjos_manager_v1_store');
+    if (!fullBackup) {
+      alert('No hay datos guardados para exportar');
+      return;
+    }
+    const blob = new Blob([fullBackup], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `devjos_manager_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = event.target?.result as string;
+        JSON.parse(json);
+        localStorage.setItem('devjos_manager_v1_store', json);
+        alert('¡Copia de seguridad restaurada correctamente! La página se recargará.');
+        window.location.reload();
+      } catch (err) {
+        alert('Error al leer o procesar el archivo JSON de respaldo.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="max-w-4xl space-y-6 animate-in fade-in duration-200 pb-12">
+      {/* Top Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 backdrop-blur-md border border-slate-800 p-5 rounded-2xl">
+        <div>
+          <h2 className="text-base font-bold text-white font-display">Configuración de DevJos Studio</h2>
+          <p className="text-xs text-slate-400">
+            Ajustes del servidor NAS, identidad de estudio, reglas de automatización y respaldos.
+          </p>
+        </div>
+
+        {savedSuccess && (
+          <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4" /> Cambios Guardados con Éxito
+          </span>
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* NAS CONFIGURATION (TOP PRIORITY REQUESTED BY USER) */}
+        <div className="bg-slate-900/80 backdrop-blur-md border border-cyan-500/30 rounded-2xl p-5 sm:p-6 space-y-5 shadow-lg shadow-cyan-950/20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <Server className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white font-display">
+                    Servidor NAS & Almacenamiento Privado
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Conecta tu Synology, TrueNAS, QNAP o servidor local para guardar archivos pesados y entregar a clientes.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.nasStorageEnabled || false}
+                onChange={(e) => setFormData({ ...formData, nasStorageEnabled: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+              <span className="ml-2.5 text-xs font-semibold text-slate-200">
+                {formData.nasStorageEnabled ? 'NAS Activo' : 'NAS Desactivado'}
+              </span>
+            </label>
+          </div>
+
+          {formData.nasStorageEnabled && (
+            <div className="space-y-4">
+              {/* Presets */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                  Tipo o Marca de Servidor NAS
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+                  {(['Synology', 'TrueNAS', 'QNAP', 'WebDAV', 'SMB', 'Personalizado'] as NasBrandType[]).map((brand) => (
+                    <button
+                      key={brand}
+                      type="button"
+                      onClick={() => handleNasBrandChange(brand)}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border text-center ${
+                        formData.nasBrand === brand
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-500/20'
+                          : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-900'
+                      }`}
+                    >
+                      {brand}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Server Host & Port */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Dirección IP / Host / Dominio del NAS *
+                  </label>
+                  <div className="relative">
+                    <Globe className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="Ej. 192.168.1.120 o nas.devjosstudio.com"
+                      value={formData.nasHost || ''}
+                      onChange={(e) => setFormData({ ...formData, nasHost: e.target.value })}
+                      className="w-full pl-8 pr-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-100 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Puerto del Servicio
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="5001"
+                    value={formData.nasPort || 5001}
+                    onChange={(e) => setFormData({ ...formData, nasPort: parseInt(e.target.value) || 5001 })}
+                    className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-100 focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Protocol & Root Folder */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Protocolo</label>
+                  <select
+                    value={formData.nasProtocol || 'HTTPS'}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        nasProtocol: e.target.value as any,
+                      })
+                    }
+                    className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none font-mono"
+                  >
+                    <option value="HTTPS">HTTPS (Seguro - Recomendado)</option>
+                    <option value="HTTP">HTTP</option>
+                    <option value="WebDAV">WebDAV</option>
+                    <option value="SMB/CIFS">SMB / CIFS (Red Local)</option>
+                    <option value="FTP">FTP / SFTP</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Ruta / Carpeta Raíz en el NAS
+                  </label>
+                  <div className="relative">
+                    <HardDrive className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="/volume1/DevJos_Studio_Storage"
+                      value={formData.nasRootFolder || formData.nasStoragePath || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          nasRootFolder: e.target.value,
+                          nasStoragePath: e.target.value,
+                        })
+                      }
+                      className="w-full pl-8 pr-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-100 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Credentials & Shared Links */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Usuario del NAS / API Key
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="admin_devjos"
+                    value={formData.nasUsername || ''}
+                    onChange={(e) => setFormData({ ...formData, nasUsername: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-100 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Contraseña / Token de Autenticación
+                  </label>
+                  <div className="relative">
+                    <Key className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                    <input
+                      type="password"
+                      placeholder="••••••••••••"
+                      value={formData.nasPassword || ''}
+                      onChange={(e) => setFormData({ ...formData, nasPassword: e.target.value })}
+                      className="w-full pl-8 pr-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-100 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Public Sharing Links Prefix */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Prefijo de Enlaces Compartidos para Clientes (Descargas Portal)
+                </label>
+                <div className="relative">
+                  <Share2 className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="https://nas.devjosstudio.com/sharing/ o http://quickconnect.to/devjos/"
+                    value={formData.nasSharedLinksPrefix || ''}
+                    onChange={(e) => setFormData({ ...formData, nasSharedLinksPrefix: e.target.value })}
+                    className="w-full pl-8 pr-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-100 focus:outline-none font-mono"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Los clientes descargarán las galerías y entregables finales usando este túnel de tu NAS sin límite de gigabytes.
+                </p>
+              </div>
+
+              {/* Actions: Test Connection & Create Directory Structure */}
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleTestNas}
+                  disabled={isTestingNas}
+                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isTestingNas ? 'animate-spin' : ''}`} />
+                  {isTestingNas ? 'Verificando Conexión...' : 'Probar Conexión con el NAS'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCreateFoldersTree}
+                  disabled={isCreatingFolders}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-colors flex items-center gap-2 border border-slate-700 disabled:opacity-50"
+                >
+                  <FolderTree className="w-3.5 h-3.5 text-purple-400" />
+                  {isCreatingFolders ? 'Creando estructura...' : 'Generar Árbol de Carpetas de Estudio'}
+                </button>
+
+                {nasTestResult && (
+                  <div
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ${
+                      nasTestResult.success
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                    }`}
+                  >
+                    {nasTestResult.success ? (
+                      <>
+                        <Activity className="w-3.5 h-3.5" />
+                        <span>Online (Latencia: {nasTestResult.latencyMs}ms)</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>Fallo de conexión</span>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {foldersCreatedSuccess && (
+                  <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-3 py-1.5 rounded-xl border border-purple-500/20 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Árbol de 6 directorios creado en NAS
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Studio Identity */}
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 className="text-sm font-bold text-cyan-400 font-display flex items-center gap-2">
+            <Building className="w-4 h-4" /> Datos de Identidad & Contacto
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Nombre del Estudio / Empresa
+              </label>
+              <input
+                type="text"
+                value={formData.studioName || ''}
+                onChange={(e) => setFormData({ ...formData, studioName: e.target.value })}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Eslogan / Especialidad
+              </label>
+              <input
+                type="text"
+                value={formData.tagline || ''}
+                onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Email Oficial</label>
+              <input
+                type="email"
+                value={formData.email || ''}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Teléfono / WhatsApp de Contacto
+              </label>
+              <input
+                type="tel"
+                value={formData.phone || formData.whatsapp || ''}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value, whatsapp: e.target.value })}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Dirección del Estudio</label>
+              <input
+                type="text"
+                value={formData.address || ''}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Automation Rules */}
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 className="text-sm font-bold text-amber-400 font-display flex items-center gap-2">
+            <Sparkles className="w-4 h-4" /> Reglas de Automatización de Flujos
+          </h3>
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800 cursor-pointer hover:border-slate-700">
+              <input
+                type="checkbox"
+                checked={formData.automationRules?.autoCreateProjectOnQuoteAccept ?? true}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    automationRules: {
+                      ...formData.automationRules,
+                      autoCreateProjectOnQuoteAccept: e.target.checked,
+                    },
+                  })
+                }
+                className="w-4 h-4 text-cyan-600 rounded bg-slate-900 border-slate-700"
+              />
+              <div>
+                <p className="text-xs font-bold text-white">Crear Proyecto al Aceptar Cotización</p>
+                <p className="text-[11px] text-slate-400">
+                  Inicia un proyecto automáticamente cuando el cliente firma o acepta la cotización.
+                </p>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800 cursor-pointer hover:border-slate-700">
+              <input
+                type="checkbox"
+                checked={formData.automationRules?.autoCreateKickoffTasks ?? true}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    automationRules: {
+                      ...formData.automationRules,
+                      autoCreateKickoffTasks: e.target.checked,
+                    },
+                  })
+                }
+                className="w-4 h-4 text-cyan-600 rounded bg-slate-900 border-slate-700"
+              />
+              <div>
+                <p className="text-xs font-bold text-white">Generar Tareas Iniciales de Kickoff</p>
+                <p className="text-[11px] text-slate-400">
+                  Asigna tareas de brief y estructura inicial al equipo en proyectos recién creados.
+                </p>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800 cursor-pointer hover:border-slate-700">
+              <input
+                type="checkbox"
+                checked={formData.automationRules?.autoRecordAdvanceDeposit ?? true}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    automationRules: {
+                      ...formData.automationRules,
+                      autoRecordAdvanceDeposit: e.target.checked,
+                    },
+                  })
+                }
+                className="w-4 h-4 text-cyan-600 rounded bg-slate-900 border-slate-700"
+              />
+              <div>
+                <p className="text-xs font-bold text-white">Registrar Ingreso de Anticipo 50%</p>
+                <p className="text-[11px] text-slate-400">
+                  Crea automáticamente un registro de ingreso por el 50% de anticipo acordado.
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Financial defaults */}
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 className="text-sm font-bold text-cyan-400 font-display flex items-center gap-2">
+            <DollarSign className="w-4 h-4" /> Configuración Fiscal & Moneda
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Moneda Principal</label>
+              <select
+                value={formData.currency || 'USD'}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+              >
+                <option value="USD">USD ($) - Dólares Americanos</option>
+                <option value="DOP">DOP (RD$) - Pesos Dominicanos</option>
+                <option value="EUR">EUR (€) - Euros</option>
+                <option value="MXN">MXN ($) - Pesos Mexicanos</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                RNC / Cédula / Tax ID
+              </label>
+              <input
+                type="text"
+                value={formData.taxId || ''}
+                onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Tasa de Impuesto / ITBIS (%)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={formData.taxRate || 18}
+                onChange={(e) =>
+                  setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Database Backup & NAS Export Section */}
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 className="text-sm font-bold text-purple-400 font-display flex items-center gap-2">
+            <Database className="w-4 h-4" /> Base de Datos, Respaldos & Migración
+          </h3>
+          <p className="text-xs text-slate-400">
+            Exporta todos los clientes, proyectos, tareas, cotizaciones y registros contables en un archivo JSON seguro para migración o backup.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={handleExportBackup}
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-semibold text-xs transition-colors flex items-center gap-2 border border-slate-700"
+            >
+              <Download className="w-4 h-4" /> Exportar Copia de Seguridad JSON
+            </button>
+
+            <label className="px-4 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 font-semibold text-xs transition-colors flex items-center gap-2 border border-purple-500/30 cursor-pointer">
+              <Upload className="w-4 h-4" /> Restaurar Respaldo
+              <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('¿Restablecer los datos a la demostración inicial de DevJos Studio?')) {
+                  resetToDemoData();
+                  alert('¡Datos restablecidos!');
+                }
+              }}
+              className="px-4 py-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200 font-semibold text-xs transition-colors flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" /> Restablecer Demo
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5"
+          >
+            <Save className="w-4 h-4" /> Guardar Todos los Ajustes
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};

@@ -1,0 +1,6 @@
+{
+  "name": "DevJos Manager",
+  "description": "Sistema de gestión y centro de operaciones para DevJos Studio: clientes, proyectos, finanzas, tareas, cotizaciones, fotografía, multimedia y equipo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
