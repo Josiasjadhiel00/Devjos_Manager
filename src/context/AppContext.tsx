@@ -46,6 +46,7 @@ import {
   initialActivityLogs,
 } from '../data/initialData';
 import { canAccessView } from '../utils/permissions';
+import { subscribeToStudioData, saveStudioDataToFirestore, StudioSyncPayload } from '../lib/firestoreSync';
 
 export type ActiveView = 
   | 'dashboard'
@@ -308,8 +309,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Initial load
+  // Initial load & Real-time Firestore Sync
   useEffect(() => {
+    // 1. Load from local cache for instant zero-delay render
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
@@ -337,37 +339,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Error loading local state', e);
     }
     setDataLoaded(true);
-    refreshDataFromDb();
+
+    // 2. Subscribe to Firestore real-time cloud changes
+    const unsubscribe = subscribeToStudioData(
+      (cloudData: StudioSyncPayload) => {
+        if (cloudData.settings) setSettings(cloudData.settings);
+        if (cloudData.clients && cloudData.clients.length > 0) setClients(cloudData.clients);
+        if (cloudData.projects && cloudData.projects.length > 0) setProjects(cloudData.projects);
+        if (cloudData.tasks && cloudData.tasks.length > 0) setTasks(cloudData.tasks);
+        if (cloudData.services && cloudData.services.length > 0) setServices(cloudData.services);
+        if (cloudData.quotes && cloudData.quotes.length > 0) setQuotes(cloudData.quotes);
+        if (cloudData.incomes && cloudData.incomes.length > 0) setIncomes(cloudData.incomes);
+        if (cloudData.expenses && cloudData.expenses.length > 0) setExpenses(cloudData.expenses);
+        if (cloudData.payments && cloudData.payments.length > 0) setPayments(cloudData.payments);
+        if (cloudData.photoSessions && cloudData.photoSessions.length > 0) setPhotoSessions(cloudData.photoSessions);
+        if (cloudData.galleries && cloudData.galleries.length > 0) setGalleries(cloudData.galleries);
+        if (cloudData.mediaProjects && cloudData.mediaProjects.length > 0) setMediaProjects(cloudData.mediaProjects);
+        if (cloudData.files && cloudData.files.length > 0) setFiles(cloudData.files);
+        if (cloudData.calendarEvents && cloudData.calendarEvents.length > 0) setCalendarEvents(cloudData.calendarEvents);
+        if (cloudData.team && cloudData.team.length > 0) setTeam(cloudData.team);
+        if (cloudData.notifications && cloudData.notifications.length > 0) setNotifications(cloudData.notifications);
+        if (cloudData.activityLogs && cloudData.activityLogs.length > 0) setActivityLogs(cloudData.activityLogs);
+        setIsDatabaseConnected(true);
+        setSyncStatus('connected');
+      },
+      (err) => {
+        console.warn('Firestore offline / local fallback mode active:', err);
+        refreshDataFromDb();
+      }
+    );
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [refreshDataFromDb]);
 
-  // Save to local storage on changes
+  // Save to local storage & Firestore on changes
   useEffect(() => {
     if (!dataLoaded) return;
+    const payload = {
+      settings,
+      clients,
+      projects,
+      tasks,
+      services,
+      quotes,
+      incomes,
+      expenses,
+      payments,
+      photoSessions,
+      galleries,
+      mediaProjects,
+      files,
+      calendarEvents,
+      team,
+      notifications,
+      activityLogs,
+      theme,
+    };
+
+    // Save local cache
     try {
-      const payload = {
-        settings,
-        clients,
-        projects,
-        tasks,
-        services,
-        quotes,
-        incomes,
-        expenses,
-        payments,
-        photoSessions,
-        galleries,
-        mediaProjects,
-        files,
-        calendarEvents,
-        team,
-        notifications,
-        activityLogs,
-        theme,
-      };
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
       console.error('Error persisting local state', e);
     }
+
+    // Save to Firestore Cloud Database
+    saveStudioDataToFirestore(payload, currentUser?.name);
   }, [
     dataLoaded,
     settings,
@@ -388,6 +427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notifications,
     activityLogs,
     theme,
+    currentUser?.name,
   ]);
 
   // Sync theme attribute with document body

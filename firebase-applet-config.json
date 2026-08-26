@@ -1,11 +1,11 @@
 {
-  "projectId": "proverbial-concept-hszp9",
-  "appId": "1:169720438048:web:e88295d7c828c5a04d0b45",
-  "apiKey": "AIzaSyCXziQqIU3J6u0n3BIBZvLxWOUmObrFrmI",
-  "authDomain": "proverbial-concept-hszp9.firebaseapp.com",
-  "storageBucket": "proverbial-concept-hszp9.firebasestorage.app",
-  "messagingSenderId": "169720438048",
+  "projectId": "estudio-devjos",
+  "appId": "1:493881955821:web:0a4c14a7b5999974e4c3e4",
+  "apiKey": "AIzaSyCyKL6k9-sP1iaeEAbu6wa48P0k_zn7zDg",
+  "authDomain": "estudio-devjos.firebaseapp.com",
+  "storageBucket": "estudio-devjos.firebasestorage.app",
+  "messagingSenderId": "493881955821",
   "measurementId": "",
-  "oAuthClientId": "169720438048-r443fo1d6gue96h8his2b8ku3e0rt46j.apps.googleusercontent.com",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }
