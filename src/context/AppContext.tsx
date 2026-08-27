@@ -46,7 +46,7 @@ import {
   initialActivityLogs,
 } from '../data/initialData';
 import { canAccessView } from '../utils/permissions';
-import { subscribeToStudioData, saveStudioDataToFirestore, StudioSyncPayload } from '../lib/firestoreSync';
+import { subscribeToStudioData, saveStudioDataToFirestore, testFirestoreConnection, StudioSyncPayload } from '../lib/firestoreSync';
 import { formatCurrency, getCurrencySymbol } from '../utils/formatCurrency';
 
 export type ActiveView = 
@@ -94,6 +94,7 @@ interface AppContextType {
   isDatabaseConnected: boolean;
   syncStatus: 'idle' | 'syncing' | 'connected' | 'offline';
   refreshDataFromDb: () => Promise<void>;
+  testFirestoreConnection: () => Promise<{ success: boolean; message: string }>;
 
   // Selection States for deep-linking / modals
   selectedClientId: string | null;
@@ -1267,6 +1268,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isDatabaseConnected,
         syncStatus,
         refreshDataFromDb,
+        testFirestoreConnection,
         selectedClientId,
         setSelectedClientId,
         selectedProjectId,

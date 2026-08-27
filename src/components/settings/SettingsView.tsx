@@ -31,7 +31,15 @@ import { NasBrandType } from '../../types';
 import { getCurrencySymbol } from '../../utils/formatCurrency';
 
 export const SettingsView: React.FC = () => {
-  const { settings, updateSettings, testNasConnection, createNasFoldersTree, resetToDemoData } = useApp();
+  const { 
+    settings, 
+    updateSettings, 
+    testNasConnection, 
+    createNasFoldersTree, 
+    resetToDemoData,
+    testFirestoreConnection,
+    syncStatus,
+  } = useApp();
 
   const [formData, setFormData] = useState({ ...settings });
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -48,6 +56,29 @@ export const SettingsView: React.FC = () => {
   } | null>(null);
   const [isCreatingFolders, setIsCreatingFolders] = useState(false);
   const [foldersCreatedSuccess, setFoldersCreatedSuccess] = useState(false);
+
+  // Firebase Cloud sync diagnostic
+  const [isTestingFirestore, setIsTestingFirestore] = useState(false);
+  const [firestoreTestResult, setFirestoreTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  const handleTestFirestore = async () => {
+    setIsTestingFirestore(true);
+    setFirestoreTestResult(null);
+    try {
+      const res = await testFirestoreConnection();
+      setFirestoreTestResult(res);
+    } catch (e: any) {
+      setFirestoreTestResult({
+        success: false,
+        message: e?.message || 'Error al conectar con Firebase Firestore',
+      });
+    } finally {
+      setIsTestingFirestore(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -625,6 +656,61 @@ export const SettingsView: React.FC = () => {
                 className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Cloud Database Synchronization Status */}
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-cyan-400 font-display flex items-center gap-2">
+              <Server className="w-4 h-4" /> Sincronización en la Nube Multi-Cuenta (Firebase Firestore)
+            </h3>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Proyecto: estudio-devjos
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Permite que todos los cambios (clientes, cotizaciones, pagos, proyectos) se sincronicen en tiempo real entre múltiples cuentas de Google, navegadores y computadoras.
+          </p>
+
+          <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                Estado del Conector en Vivo
+              </span>
+              <button
+                type="button"
+                onClick={handleTestFirestore}
+                disabled={isTestingFirestore}
+                className="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${isTestingFirestore ? 'animate-spin' : ''}`} />
+                {isTestingFirestore ? 'Comprobando...' : 'Diagnosticar Conexión'}
+              </button>
+            </div>
+
+            {firestoreTestResult && (
+              <div
+                className={`p-3 rounded-lg text-xs leading-relaxed border ${
+                  firestoreTestResult.success
+                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                    : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {firestoreTestResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className="font-semibold">{firestoreTestResult.message}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

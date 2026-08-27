@@ -49,7 +49,7 @@ export function subscribeToStudioData(
         }
       },
       (err) => {
-        console.warn('Firestore subscription status:', err.message);
+        console.warn('Firestore subscription status:', err.message || err);
         if (onError) onError(err);
       }
     );
@@ -57,6 +57,42 @@ export function subscribeToStudioData(
     console.warn('Could not establish Firestore listener:', err);
     if (onError) onError(err);
     return () => {};
+  }
+}
+
+/**
+ * Tests direct read/write connection to Firestore
+ */
+export async function testFirestoreConnection(): Promise<{ success: boolean; message: string }> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, STUDIO_DOC_ID);
+    const snapshot = await getDoc(docRef);
+    if (!snapshot.exists()) {
+      // Try writing initial blank doc
+      await setDoc(docRef, { initialSetup: true, lastUpdated: new Date().toISOString() }, { merge: true });
+    }
+    return {
+      success: true,
+      message: 'Conexión exitosa con Firestore (Proyecto: estudio-devjos). Los datos se sincronizan en tiempo real entre todas las cuentas y dispositivos.',
+    };
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    if (msg.includes('permission-denied') || msg.includes('PERMISSION_DENIED')) {
+      return {
+        success: false,
+        message: 'Permiso denegado por las reglas de Firestore. Ve a la consola de Firebase > Firestore Database > pestaña "Reglas" y permite lectura/escritura (allow read, write: if true;).',
+      };
+    }
+    if (msg.includes('not-found') || msg.includes('NOT_FOUND') || msg.includes('Failed to get document')) {
+      return {
+        success: false,
+        message: 'La base de datos Firestore aún no ha sido creada en tu consola de Firebase. Abre Firebase > Firestore Database y haz clic en "Crear base de datos".',
+      };
+    }
+    return {
+      success: false,
+      message: `Error al conectar con Firestore: ${msg}`,
+    };
   }
 }
 
