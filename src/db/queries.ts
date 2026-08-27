@@ -1,5 +1,6 @@
-import { db } from './index.ts';
+import { db, createPool } from './index.ts';
 import * as schema from './schema.ts';
+import { ensurePostgresTablesExist } from './initSchema.ts';
 import { eq } from 'drizzle-orm';
 import {
   initialClients,
@@ -22,6 +23,10 @@ import {
 // Helper to seed initial dataset into PostgreSQL if empty
 export async function ensureDatabaseSeeded() {
   try {
+    const pool = createPool();
+    if (pool) {
+      await ensurePostgresTablesExist(pool);
+    }
     const existingClients = await db.select().from(schema.clients).limit(1);
     if (existingClients.length === 0) {
       console.log('🌱 Seeding initial DevJos Studio data to Cloud SQL PostgreSQL...');

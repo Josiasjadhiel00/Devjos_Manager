@@ -42,6 +42,16 @@ async function startServer() {
     res.json({ status: "ok", database: "postgresql" });
   });
 
+  // Manual / automatic table initialization endpoint
+  app.get("/api/init-db", async (req, res) => {
+    try {
+      await ensureDatabaseSeeded();
+      res.json({ success: true, message: "Tablas y datos inicializados correctamente en PostgreSQL / Vercel Postgres" });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || String(err) });
+    }
+  });
+
   // Fetch full dataset from Cloud SQL database
   app.get("/api/bootstrap", optionalAuth, async (req: AuthRequest, res) => {
     try {
