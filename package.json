@@ -37,7 +37,5 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
   },
-  "devDependencies": {
-    "autoprefixer": "^10.4.21"
-  }
+  "devDependencies": {}
 }
