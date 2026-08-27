@@ -28,6 +28,8 @@ export const QuotesView: React.FC = () => {
     deleteQuote,
     selectedQuoteId,
     setSelectedQuoteId,
+    formatMoney,
+    currencyCode,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,7 +71,7 @@ export const QuotesView: React.FC = () => {
             <span className="text-xs font-semibold">Total Cotizado</span>
             <FileText className="w-4 h-4 text-purple-400" />
           </div>
-          <p className="text-2xl font-bold text-white font-display">${(totalQuoted || 0).toLocaleString()} USD</p>
+          <p className="text-2xl font-bold text-white font-display">{formatMoney(totalQuoted || 0)}</p>
           <p className="text-[11px] text-slate-400">{quotes.length} cotizaciones emitidas</p>
         </div>
 
@@ -78,7 +80,7 @@ export const QuotesView: React.FC = () => {
             <span className="text-xs font-semibold">Aceptadas & Aprobadas</span>
             <CheckCircle className="w-4 h-4 text-emerald-400" />
           </div>
-          <p className="text-2xl font-bold text-emerald-400 font-display">${(acceptedTotal || 0).toLocaleString()} USD</p>
+          <p className="text-2xl font-bold text-emerald-400 font-display">{formatMoney(acceptedTotal || 0)}</p>
           <p className="text-[11px] text-slate-400">{acceptedQuotes.length} proyectos concretados</p>
         </div>
 
@@ -145,7 +147,7 @@ export const QuotesView: React.FC = () => {
                 <th className="p-4">Fecha Emisión</th>
                 <th className="p-4">Vencimiento</th>
                 <th className="p-4">Estado</th>
-                <th className="p-4">Total (USD)</th>
+                <th className="p-4">Total ({currencyCode})</th>
                 <th className="p-4 text-right">Acciones</th>
               </tr>
             </thead>
@@ -193,7 +195,7 @@ export const QuotesView: React.FC = () => {
                         </Badge>
                       </td>
                       <td className="p-4 font-bold text-slate-100 font-display">
-                        ${(q.total || 0).toLocaleString()} USD
+                        {formatMoney(q.total || 0)}
                       </td>
                       <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">

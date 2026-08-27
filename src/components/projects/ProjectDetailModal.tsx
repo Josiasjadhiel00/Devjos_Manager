@@ -40,6 +40,9 @@ export const ProjectDetailModal: React.FC<{
     deleteTask,
     recordPayment,
     addFile,
+    formatMoney,
+    currencyCode,
+    currencySymbol,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'finance' | 'files'>('overview');
@@ -237,7 +240,7 @@ export const ProjectDetailModal: React.FC<{
                     Precio Contratado
                   </span>
                   <span className="text-base font-bold text-white font-display">
-                    ${(project.price || 0).toLocaleString()} USD
+                    {formatMoney(project.price || 0)}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-slate-950/50 border border-slate-800">
@@ -245,7 +248,7 @@ export const ProjectDetailModal: React.FC<{
                     Monto Pagado
                   </span>
                   <span className="text-base font-bold text-emerald-400 font-display">
-                    ${(project.paidAmount || 0).toLocaleString()} USD
+                    {formatMoney(project.paidAmount || 0)}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-slate-950/50 border border-slate-800">
@@ -253,7 +256,7 @@ export const ProjectDetailModal: React.FC<{
                     Pendiente por Cobrar
                   </span>
                   <span className="text-base font-bold text-amber-400 font-display">
-                    ${(pendingAmount || 0).toLocaleString()} USD
+                    {formatMoney(pendingAmount || 0)}
                   </span>
                 </div>
               </div>
@@ -395,7 +398,7 @@ export const ProjectDetailModal: React.FC<{
                 <div>
                   <h4 className="font-bold text-white">Estado de Cobros</h4>
                   <p className="text-slate-400 mt-0.5">
-                    Pagado: ${project.paidAmount || 0} de ${project.price} USD
+                    Pagado: {formatMoney(project.paidAmount || 0)} de {formatMoney(project.price || 0)}
                   </p>
                 </div>
                 <button
@@ -411,7 +414,7 @@ export const ProjectDetailModal: React.FC<{
                   <h4 className="font-bold text-emerald-400">Registrar Pago para este Proyecto</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">Monto (USD)</label>
+                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">Monto ({currencyCode})</label>
                       <input
                         type="number"
                         min="1"

@@ -290,6 +290,8 @@ export type FileFolder =
   | 'Videos' 
   | 'Entrega';
 
+export type NasBrandType = 'Synology' | 'TrueNAS' | 'QNAP' | 'WebDAV' | 'SMB' | 'Personalizado' | 'synology' | 'qnap' | 'truenas' | 'smb' | 'local';
+
 export interface ProjectFile {
   id: string;
   clientId: string;
@@ -301,6 +303,8 @@ export interface ProjectFile {
   uploadDate: string;
   url: string;
   nasSynced: boolean;
+  fileDataUrl?: string;
+  nasPath?: string;
 }
 
 export type CalendarEventType = 

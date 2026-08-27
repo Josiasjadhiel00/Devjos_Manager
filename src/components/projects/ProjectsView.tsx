@@ -28,6 +28,7 @@ export const ProjectsView: React.FC = () => {
     updateProject,
     selectedProjectId,
     setSelectedProjectId,
+    formatMoney,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,7 +199,7 @@ export const ProjectsView: React.FC = () => {
                 </div>
 
                 <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                  <span className="font-bold text-slate-100">${(p.price || 0).toLocaleString()} USD</span>
+                  <span className="font-bold text-slate-100">{formatMoney(p.price || 0)}</span>
                   <span className="flex items-center gap-1 text-[11px]">
                     <Calendar className="w-3 h-3 text-slate-500" />
                     {p.deliveryDate}
@@ -283,7 +284,7 @@ export const ProjectsView: React.FC = () => {
                         </div>
                       </td>
                       <td className="p-4 text-slate-300">{p.deliveryDate}</td>
-                      <td className="p-4 font-bold text-slate-100">${(p.price || 0).toLocaleString()} USD</td>
+                      <td className="p-4 font-bold text-slate-100">{formatMoney(p.price || 0)}</td>
                       <td className="p-4 text-right">
                         <button
                           onClick={() => setSelectedProjectId(p.id)}

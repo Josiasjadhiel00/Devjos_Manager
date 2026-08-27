@@ -10,7 +10,7 @@ interface QuotePreviewModalProps {
 }
 
 export const QuotePreviewModal: React.FC<QuotePreviewModalProps> = ({ quoteId, onClose }) => {
-  const { quotes, clients, settings, updateQuoteStatus } = useApp();
+  const { quotes, clients, settings, updateQuoteStatus, formatMoney } = useApp();
 
   if (!quoteId) return null;
   const quote = quotes.find((q) => q.id === quoteId);
@@ -151,10 +151,10 @@ export const QuotePreviewModal: React.FC<QuotePreviewModalProps> = ({ quoteId, o
                     </td>
                     <td className="py-3 px-3 text-center text-slate-300 print:text-gray-800">{item.quantity}</td>
                     <td className="py-3 px-3 text-right text-slate-300 print:text-gray-800">
-                      ${(item.unitPrice || 0).toLocaleString()} USD
+                      {formatMoney(item.unitPrice || 0)}
                     </td>
                     <td className="py-3 px-3 text-right font-bold text-slate-100 print:text-black">
-                      ${(item.total || 0).toLocaleString()} USD
+                      {formatMoney(item.total || 0)}
                     </td>
                   </tr>
                 ))}
@@ -186,27 +186,27 @@ export const QuotePreviewModal: React.FC<QuotePreviewModalProps> = ({ quoteId, o
             <div className="w-full sm:w-72 space-y-2 p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 text-xs print:bg-gray-50 print:border-gray-300">
               <div className="flex justify-between text-slate-400 print:text-gray-600">
                 <span>Subtotal:</span>
-                <span className="font-medium text-slate-200 print:text-black">${(quote.subtotal || 0).toLocaleString()} USD</span>
+                <span className="font-medium text-slate-200 print:text-black">{formatMoney(quote.subtotal || 0)}</span>
               </div>
 
               {quote.discountTotal > 0 && (
                 <div className="flex justify-between text-rose-400">
                   <span>Descuento:</span>
-                  <span>-${(quote.discountTotal || 0).toLocaleString()} USD</span>
+                  <span>-{formatMoney(quote.discountTotal || 0)}</span>
                 </div>
               )}
 
               {quote.taxAmount > 0 && (
                 <div className="flex justify-between text-slate-400 print:text-gray-600">
                   <span>Impuesto ({quote.taxRate}%):</span>
-                  <span className="text-slate-200 print:text-black">+${(quote.taxAmount || 0).toFixed(2)} USD</span>
+                  <span className="text-slate-200 print:text-black">+{formatMoney(quote.taxAmount || 0)}</span>
                 </div>
               )}
 
               <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-sm font-bold print:border-gray-300">
                 <span className="text-white print:text-black">TOTAL:</span>
                 <span className="text-cyan-400 text-base font-display print:text-black">
-                  ${(quote.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  {formatMoney(quote.total || 0)}
                 </span>
               </div>
             </div>

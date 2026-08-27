@@ -39,6 +39,7 @@ export const ClientProfileModal: React.FC<{
     setSelectedQuoteId,
     setCurrentView,
     deleteClient,
+    formatMoney,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'info' | 'projects' | 'finance' | 'quotes' | 'files' | 'activity'>('info');
@@ -145,15 +146,15 @@ export const ClientProfileModal: React.FC<{
           <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-800/80 text-xs">
             <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Contratado</span>
-              <span className="text-sm font-bold text-slate-100 font-display">${(totalContracted || 0).toLocaleString()} USD</span>
+              <span className="text-sm font-bold text-slate-100 font-display">{formatMoney(totalContracted || 0)}</span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
               <span className="text-[10px] uppercase font-bold text-emerald-400 block">Total Pagado</span>
-              <span className="text-sm font-bold text-emerald-400 font-display">${(totalPaid || 0).toLocaleString()} USD</span>
+              <span className="text-sm font-bold text-emerald-400 font-display">{formatMoney(totalPaid || 0)}</span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
               <span className="text-[10px] uppercase font-bold text-amber-400 block">Saldo Pendiente</span>
-              <span className="text-sm font-bold text-amber-400 font-display">${(totalPending || 0).toLocaleString()} USD</span>
+              <span className="text-sm font-bold text-amber-400 font-display">{formatMoney(totalPending || 0)}</span>
             </div>
           </div>
         </div>
@@ -266,7 +267,7 @@ export const ClientProfileModal: React.FC<{
                       <p className="text-[11px] text-slate-400">{p.category} • Entrega: {p.deliveryDate} • Progreso: {p.progress}%</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-bold text-slate-200 block">${(p.price || 0).toLocaleString()} USD</span>
+                      <span className="text-xs font-bold text-slate-200 block">{formatMoney(p.price || 0)}</span>
                       <button
                         onClick={() => {
                           setSelectedProjectId(p.id);
@@ -305,7 +306,7 @@ export const ClientProfileModal: React.FC<{
                         <td className="py-2.5 text-cyan-400 font-mono">{inc.invoiceNumber || '—'}</td>
                         <td className="py-2.5 text-slate-200">{inc.description}</td>
                         <td className="py-2.5 text-slate-400">{inc.method}</td>
-                        <td className="py-2.5 text-right font-bold text-emerald-400">+${(inc.amount || 0).toLocaleString()} USD</td>
+                        <td className="py-2.5 text-right font-bold text-emerald-400">+{formatMoney(inc.amount || 0)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -324,7 +325,7 @@ export const ClientProfileModal: React.FC<{
                     <p className="text-[11px] text-slate-400">Emitida: {qt.issueDate} • Vence: {qt.expiryDate}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-slate-200">${(qt.total || 0).toLocaleString()} USD</span>
+                    <span className="text-xs font-bold text-slate-200">{formatMoney(qt.total || 0)}</span>
                     <Badge size="sm" variant={qt.status === 'Aceptada' ? 'success' : 'warning'}>{qt.status}</Badge>
                     <button
                       onClick={() => {

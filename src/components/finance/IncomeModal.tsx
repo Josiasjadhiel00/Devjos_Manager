@@ -10,7 +10,7 @@ interface IncomeModalProps {
 }
 
 export const IncomeModal: React.FC<IncomeModalProps> = ({ isOpen, onClose, onSave }) => {
-  const { clients, projects } = useApp();
+  const { clients, projects, currencyCode, currencySymbol } = useApp();
 
   const [formData, setFormData] = useState({
     clientId: clients[0]?.id || '',
@@ -90,17 +90,19 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({ isOpen, onClose, onSav
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Monto Recibido (USD) *
+                Monto Recibido ({currencyCode}) *
               </label>
               <div className="relative">
-                <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <span className="text-xs font-semibold text-cyan-400 absolute left-3 top-2.5">
+                  {currencySymbol}
+                </span>
                 <input
                   type="number"
                   min="1"
                   required
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 focus:outline-none"
+                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl pl-12 pr-3 py-2 text-xs text-slate-100 focus:outline-none"
                 />
               </div>
             </div>

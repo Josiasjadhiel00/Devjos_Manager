@@ -1,3 +1,5 @@
+import { formatCurrency } from './formatCurrency';
+
 /**
  * WhatsApp Helper Utilities for DevJos Studio Suite
  */
@@ -34,15 +36,17 @@ export function createQuoteWhatsAppMessage(
   clientName: string,
   quoteNumber: string,
   total: number,
-  currency: string = 'USD',
+  currency: string = 'DOP',
   studioName: string = 'DevJos Studio'
 ): string {
-  return `¡Hola ${clientName}! 👋 Te saludamos desde *${studioName}*.\n\nTe compartimos los detalles de tu Cotización *${quoteNumber}* por un valor total de *${currency} $${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}*.\n\nPuedes revisarla, aprobarla y firmarla en línea en tu portal interactivo.\n\n¿Tienes alguna duda o te gustaría iniciar de inmediato? Quedamos a tu entera disposición. 🚀`;
+  const formattedTotal = formatCurrency(total, currency, { includeCode: true });
+  return `¡Hola ${clientName}! 👋 Te saludamos desde *${studioName}*.\n\nTe compartimos los detalles de tu Cotización *${quoteNumber}* por un valor total de *${formattedTotal}*.\n\nPuedes revisarla, aprobarla y firmarla en línea en tu portal interactivo.\n\n¿Tienes alguna duda o te gustaría iniciar de inmediato? Quedamos a tu entera disposición. 🚀`;
 }
 
 export function getWhatsAppQuoteUrl(
   quote: { quoteNumber: string; total: number },
   client: { name: string; phone?: string; whatsapp?: string } | null | undefined,
+  currency: string = 'DOP',
   studioName: string = 'DevJos Studio'
 ): string {
   const phone = client?.whatsapp || client?.phone || '';
@@ -51,7 +55,7 @@ export function getWhatsAppQuoteUrl(
     client?.name || 'Cliente',
     quote.quoteNumber,
     quote.total,
-    'USD',
+    currency,
     studioName
   );
   const encodedText = encodeURIComponent(message);
@@ -62,10 +66,11 @@ export function createPaymentReminderWhatsAppMessage(
   clientName: string,
   projectName: string,
   pendingAmount: number,
-  currency: string = 'USD',
+  currency: string = 'DOP',
   studioName: string = 'DevJos Studio'
 ): string {
-  return `¡Hola ${clientName}! 👋 Desde *${studioName}* te recordamos el saldo pendiente de *${currency} $${pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}* correspondiente al proyecto *${projectName}*.\n\nCualquier consulta con los métodos de pago estamos a la orden. ¡Gracias por confiar en nosotros! ✨`;
+  const formattedPending = formatCurrency(pendingAmount, currency, { includeCode: true });
+  return `¡Hola ${clientName}! 👋 Desde *${studioName}* te recordamos el saldo pendiente de *${formattedPending}* correspondiente al proyecto *${projectName}*.\n\nCualquier consulta con los métodos de pago estamos a la orden. ¡Gracias por confiar en nosotros! ✨`;
 }
 
 export function createPaymentReceiptWhatsAppMessage(
@@ -73,12 +78,14 @@ export function createPaymentReceiptWhatsAppMessage(
   projectName: string,
   paidAmount: number,
   remainingAmount: number,
-  currency: string = 'USD',
+  currency: string = 'DOP',
   studioName: string = 'DevJos Studio'
 ): string {
-  return `¡Hola ${clientName}! 🎉 Confirmamos con éxito la recepción de tu pago por *${currency} $${paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}* para el proyecto *${projectName}*.\n\n${
+  const formattedPaid = formatCurrency(paidAmount, currency, { includeCode: true });
+  const formattedRemaining = formatCurrency(remainingAmount, currency, { includeCode: true });
+  return `¡Hola ${clientName}! 🎉 Confirmamos con éxito la recepción de tu pago por *${formattedPaid}* para el proyecto *${projectName}*.\n\n${
     remainingAmount > 0 
-      ? `Saldo restante por pagar: *${currency} $${remainingAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}*` 
+      ? `Saldo restante por pagar: *${formattedRemaining}*` 
       : '✅ ¡Proyecto 100% saldado y liquidado!'
   }\n\n¡Gracias por tu pago a *${studioName}*!`;
 }

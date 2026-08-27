@@ -20,7 +20,7 @@ import { StatCard, Badge } from '../ui/StatCard';
 import { PaymentMethod } from '../../types';
 
 export const PaymentsView: React.FC = () => {
-  const { payments, projects, clients, incomes, addIncome, settings } = useApp();
+  const { payments, projects, clients, incomes, addIncome, settings, formatMoney, currencySymbol, currencyCode } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedPaymentProject, setSelectedPaymentProject] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export const PaymentsView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Contratado"
-          value={`$${(totalContracted || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          value={formatMoney(totalContracted || 0)}
           icon={Receipt}
           description="Suma total de presupuestos aprobados"
           iconColor="text-blue-400"
@@ -108,7 +108,7 @@ export const PaymentsView: React.FC = () => {
         />
         <StatCard
           title="Cobrado / Recaudado"
-          value={`$${(totalCollected || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          value={formatMoney(totalCollected || 0)}
           icon={TrendingUp}
           description="Dinero ingresado a cuentas del estudio"
           iconColor="text-emerald-400"
@@ -116,7 +116,7 @@ export const PaymentsView: React.FC = () => {
         />
         <StatCard
           title="Por Cobrar (Pendiente)"
-          value={`$${(totalPending || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          value={formatMoney(totalPending || 0)}
           icon={Clock}
           description="Cuentas por cobrar a clientes"
           iconColor="text-amber-400"
@@ -203,13 +203,13 @@ export const PaymentsView: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-4 font-mono font-bold text-slate-200">
-                        ${(payment.totalContract || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {formatMoney(payment.totalContract || 0)}
                       </td>
                       <td className="px-4 py-4 font-mono font-semibold text-emerald-400">
-                        ${(payment.totalPaid || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {formatMoney(payment.totalPaid || 0)}
                       </td>
                       <td className="px-4 py-4 font-mono font-semibold text-amber-400">
-                        ${(payment.totalPending || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {formatMoney(payment.totalPending || 0)}
                       </td>
                       <td className="px-4 py-4 w-44">
                         <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1 font-mono">
@@ -304,7 +304,7 @@ export const PaymentsView: React.FC = () => {
                     const pay = payments.find(paym => paym.projectId === p.id);
                     return (
                       <option key={p.id} value={p.id}>
-                        {p.name} (Pendiente: ${pay?.totalPending || 0})
+                        {p.name} (Pendiente: {formatMoney(pay?.totalPending || 0)})
                       </option>
                     );
                   })}
@@ -314,7 +314,7 @@ export const PaymentsView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Monto a Registrar ($ USD)
+                    Monto a Registrar ({currencyCode})
                   </label>
                   <input
                     type="number"

@@ -8,7 +8,7 @@ export const ProjectKanban: React.FC<{
   projects: Project[];
   onSelectProject: (id: string) => void;
 }> = ({ projects, onSelectProject }) => {
-  const { clients, team, updateProjectStatus } = useApp();
+  const { clients, team, updateProjectStatus, formatMoney } = useApp();
 
   const columns: { id: ProjectStatus; title: string; color: string }[] = [
     { id: 'Lead', title: 'Nuevos / Lead', color: 'border-slate-700' },
@@ -117,7 +117,7 @@ export const ProjectKanban: React.FC<{
 
                       {/* Footer Info */}
                       <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                        <span className="font-bold text-slate-200">${p.price} USD</span>
+                        <span className="font-bold text-slate-200">{formatMoney(p.price || 0)}</span>
                         <span className="flex items-center gap-1 text-[10px]">
                           <Calendar className="w-3 h-3 text-slate-500" />
                           {p.deliveryDate}

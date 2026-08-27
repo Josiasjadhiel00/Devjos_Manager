@@ -26,17 +26,53 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
-  const { team, clients, login, loginAsMember, loginAsClient, settings } = useApp();
+  const { team, clients, login, settings } = useApp();
   const [tab, setTab] = useState<'quick' | 'credentials' | 'client'>('quick');
+  
+  // Profile selection state
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [memberPassword, setMemberPassword] = useState('');
+  const [showMemberPassword, setShowMemberPassword] = useState(false);
+  
+  // Credentials tab state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  
+  // Client tab state
   const [selectedClientId, setSelectedClientId] = useState(clients[0]?.id || '');
+  const [clientPassword, setClientPassword] = useState('');
+  const [showClientPassword, setShowClientPassword] = useState(false);
+
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const selectedMember = team.find(m => m.id === selectedMemberId);
+
+  const handleMemberSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMember) return;
+    setErrorMessage('');
+
+    if (!memberPassword.trim()) {
+      setErrorMessage('Por favor ingresa tu contraseña para continuar.');
+      return;
+    }
+
+    const result = login(selectedMember.email, memberPassword);
+    if (!result.success) {
+      setErrorMessage(result.message || 'Contraseña incorrecta para este perfil.');
+    } else {
+      if (onSuccess) onSuccess();
+    }
+  };
 
   const handleCredentialsLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    if (!password.trim()) {
+      setErrorMessage('Por favor ingresa tu contraseña.');
+      return;
+    }
     const result = login(email, password);
     if (!result.success) {
       setErrorMessage(result.message || 'Credenciales inválidas. Revisa el correo y contraseña.');
@@ -45,15 +81,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
     }
   };
 
-  const handleQuickMemberLogin = (memberId: string) => {
-    loginAsMember(memberId);
-    if (onSuccess) onSuccess();
-  };
-
-  const handleClientLogin = () => {
+  const handleClientLogin = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectedClientId) return;
-    loginAsClient(selectedClientId);
-    if (onSuccess) onSuccess();
+    const client = clients.find(c => c.id === selectedClientId);
+    if (!client) return;
+    
+    setErrorMessage('');
+    const result = login(client.email, clientPassword);
+    if (!result.success) {
+      setErrorMessage(result.message || 'Contraseña o clave de acceso incorrecta.');
+    } else {
+      if (onSuccess) onSuccess();
+    }
   };
 
   return (
@@ -66,60 +106,44 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
           
           {/* Left Brand Panel */}
-          <div className="lg:col-span-5 p-8 sm:p-10 bg-gradient-to-br from-slate-950 via-slate-900 to-[#0c1a3b] border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col justify-between">
-            <div>
-              {/* Studio Logo */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#168dda] via-[#7a3fc4] to-[#1bb7e8] flex items-center justify-center shadow-lg shadow-blue-500/30">
-                  <Layers className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="font-display font-black text-xl text-white tracking-tight">
-                    {settings.studioName || 'DEVJOS STUDIO'}
-                  </h1>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">
-                    Control de Acceso & Roles
-                  </span>
+          <div className="lg:col-span-5 p-8 sm:p-10 bg-gradient-to-br from-slate-950 via-[#071329] to-[#0c1a3b] border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col justify-between relative overflow-hidden">
+            {/* Ambient background glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col items-center sm:items-start text-center sm:text-left">
+              {/* Studio Big Logo */}
+              <div className="mb-6">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#168dda] via-[#7a3fc4] to-[#1bb7e8] flex items-center justify-center shadow-xl shadow-cyan-500/25 border border-white/20">
+                  <Layers className="w-11 h-11 text-white drop-shadow-md" />
                 </div>
               </div>
 
-              <h2 className="text-xl font-bold text-white font-display mb-2">
-                Ingreso Seguro para el Equipo
-              </h2>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Cada colaborador cuenta con su perfil autenticado y permisos específicos para evitar sobreescrituras, errores y conflictos en proyectos y finanzas.
-              </p>
+              {/* Big Title & Subtitle */}
+              <h1 className="font-display font-black text-3xl sm:text-4xl text-white tracking-tight leading-none mb-2">
+                {settings.studioName || 'DevJos Studio'}
+              </h1>
+              
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs font-semibold tracking-wide mb-6">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Suite Profesional de Gestión</span>
+              </div>
 
-              {/* Roles Summary */}
-              <div className="mt-6 space-y-2">
-                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-                  Roles Configurados:
+              {/* Warm Welcome Message */}
+              <div className="space-y-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 sm:p-5 backdrop-blur-md">
+                <h2 className="text-base sm:text-lg font-bold text-white font-display flex items-center gap-2 justify-center sm:justify-start">
+                  <span>¡Bienvenido a tu espacio!</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  Inicia sesión para gestionar tus proyectos, coordinar con tu equipo, revisar finanzas y entregar resultados con la máxima calidad.
                 </p>
-                <div className="space-y-1.5 text-xs text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                    <span><strong className="text-slate-200">Director / Admin:</strong> Control financiero, NAS y equipo.</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-400" />
-                    <span><strong className="text-slate-200">Developer & Diseñador:</strong> Tareas, Kanban y entregables.</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-purple-400" />
-                    <span><strong className="text-slate-200">Foto & Video:</strong> Galerías, RAWs y versiones.</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-                    <span><strong className="text-slate-200">Cliente Externo:</strong> Portal de aprobación restringido.</span>
-                  </div>
-                </div>
               </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>DevJos Studio Suite v2.6</span>
-              <span className="flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Encriptación Activa
+            <div className="relative z-10 pt-6 mt-6 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>DevJos Studio Suite</span>
+              <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Sistema Protegido
               </span>
             </div>
           </div>
@@ -130,17 +154,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
               {/* Tab Selector */}
               <div className="flex rounded-xl bg-slate-950/80 p-1 border border-slate-800 mb-6">
                 <button
-                  onClick={() => { setTab('quick'); setErrorMessage(''); }}
+                  type="button"
+                  onClick={() => { setTab('quick'); setErrorMessage(''); setSelectedMemberId(null); setMemberPassword(''); }}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     tab === 'quick'
                       ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <Fingerprint className="w-3.5 h-3.5" />
-                  <span>1-Clic Miembros</span>
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Elegir Perfil</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setTab('credentials'); setErrorMessage(''); }}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     tab === 'credentials'
@@ -152,6 +178,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
                   <span>Correo & Clave</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setTab('client'); setErrorMessage(''); }}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     tab === 'client'
@@ -164,45 +191,124 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
                 </button>
               </div>
 
-              {/* Tab 1: 1-Click Quick Member Selector */}
+              {/* Tab 1: Profile Selector + Obligatory Password */}
               {tab === 'quick' && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-semibold text-slate-300">
-                      Selecciona tu perfil de colaborador:
-                    </p>
-                    <span className="text-[10px] text-slate-500">
-                      {team.length} miembros registrados
-                    </span>
-                  </div>
+                <div className="space-y-4">
+                  {!selectedMember ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold text-slate-300">
+                          Selecciona tu usuario para ingresar:
+                        </p>
+                        <span className="text-[10px] text-slate-500">
+                          {team.length} perfiles activos
+                        </span>
+                      </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[340px] overflow-y-auto pr-1">
-                    {team.map((member) => {
-                      const roleConfig = ROLE_PERMISSIONS[member.role] || ROLE_PERMISSIONS['Administrador'];
-                      return (
-                        <div
-                          key={member.id}
-                          onClick={() => handleQuickMemberLogin(member.id)}
-                          className="p-3 rounded-2xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/70 hover:border-cyan-500/50 cursor-pointer transition-all flex items-center gap-3 group active:scale-98"
-                        >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[330px] overflow-y-auto pr-1">
+                        {team.map((member) => (
+                          <div
+                            key={member.id}
+                            onClick={() => {
+                              setSelectedMemberId(member.id);
+                              setMemberPassword('');
+                              setErrorMessage('');
+                            }}
+                            className="p-3 rounded-2xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/70 hover:border-cyan-500/50 cursor-pointer transition-all flex items-center gap-3 group active:scale-98"
+                          >
+                            <img
+                              src={member.avatar}
+                              alt={member.name}
+                              className="w-10 h-10 rounded-full object-cover border border-cyan-500/40 group-hover:border-cyan-400"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">
+                                {member.name}
+                              </p>
+                              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-900 text-cyan-400 border border-slate-700 mt-0.5">
+                                {member.role}
+                              </span>
+                            </div>
+                            <Lock className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleMemberSubmit} className="space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                      {/* Selected Member Header Card */}
+                      <div className="p-3.5 rounded-2xl bg-slate-800/90 border border-cyan-500/40 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
                           <img
-                            src={member.avatar}
-                            alt={member.name}
-                            className="w-10 h-10 rounded-full object-cover border border-cyan-500/40 group-hover:border-cyan-400"
+                            src={selectedMember.avatar}
+                            alt={selectedMember.name}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-cyan-400 shadow-md"
                           />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">
-                              {member.name}
-                            </p>
-                            <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-900 text-cyan-400 border border-slate-700 mt-0.5">
-                              {member.role}
+                          <div>
+                            <h3 className="text-sm font-bold text-white">
+                              {selectedMember.name}
+                            </h3>
+                            <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 mt-0.5">
+                              {selectedMember.role}
                             </span>
                           </div>
-                          <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
                         </div>
-                      );
-                    })}
-                  </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedMemberId(null);
+                            setMemberPassword('');
+                            setErrorMessage('');
+                          }}
+                          className="text-[11px] font-semibold text-slate-400 hover:text-cyan-300 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-cyan-500/40 transition-colors"
+                        >
+                          Cambiar
+                        </button>
+                      </div>
+
+                      {/* Password Input for Selected Member */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          Ingresa tu Contraseña de Acceso:
+                        </label>
+                        <div className="relative">
+                          <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-400" />
+                          <input
+                            type={showMemberPassword ? 'text' : 'password'}
+                            value={memberPassword}
+                            onChange={(e) => setMemberPassword(e.target.value)}
+                            placeholder="Introduce tu contraseña"
+                            autoFocus
+                            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 focus:border-cyan-500 text-slate-100 text-xs focus:outline-none placeholder-slate-500 font-mono transition-all"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowMemberPassword(!showMemberPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs"
+                          >
+                            {showMemberPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {errorMessage && (
+                        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                          <span>{errorMessage}</span>
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all active:scale-98 flex items-center justify-center gap-2"
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Validar Contraseña & Entrar</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </form>
+                  )}
                 </div>
               )}
 
@@ -257,14 +363,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
                     </div>
                   )}
 
-                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400">
-                    <p className="font-semibold text-slate-300 mb-1">💡 Cuentas Demo de Prueba:</p>
-                    <div className="grid grid-cols-2 gap-1 font-mono text-[10px]">
-                      <span>Admin: <strong className="text-cyan-400">josias@devjosstudio.com</strong> (clave: admin)</span>
-                      <span>Dev: <strong className="text-cyan-400">carlos.dev@devjosstudio.com</strong> (clave: dev)</span>
-                    </div>
-                  </div>
-
                   <button
                     type="submit"
                     className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all active:scale-98 flex items-center justify-center gap-2"
@@ -277,7 +375,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
 
               {/* Tab 3: Client Portal Access */}
               {tab === 'client' && (
-                <div className="space-y-4">
+                <form onSubmit={handleClientLogin} className="space-y-4">
                   <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200">
                     <p className="font-bold text-sm text-purple-300 mb-1">
                       Acceso Exclusivo para Clientes
@@ -289,7 +387,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Seleccionar Cliente a Previsualizar
+                      Seleccionar Cuenta de Cliente
                     </label>
                     <select
                       value={selectedClientId}
@@ -304,14 +402,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
                     </select>
                   </div>
 
+                  {errorMessage && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
+
                   <button
-                    onClick={handleClientLogin}
+                    type="submit"
                     className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-500/20 transition-all active:scale-98 flex items-center justify-center gap-2"
                   >
                     <span>Entrar como Cliente al Portal</span>
                     <ExternalLink className="w-4 h-4" />
                   </button>
-                </div>
+                </form>
               )}
             </div>
 

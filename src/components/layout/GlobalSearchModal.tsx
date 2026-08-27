@@ -29,6 +29,7 @@ export const GlobalSearchModal: React.FC = () => {
     setSelectedProjectId,
     setSelectedQuoteId,
     setSelectedGalleryId,
+    formatMoney,
   } = useApp();
 
   const [query, setQuery] = useState('');
@@ -259,7 +260,7 @@ export const GlobalSearchModal: React.FC = () => {
                           <p className="text-xs font-semibold text-white group-hover:text-purple-400">
                             {qt.quoteNumber}
                           </p>
-                          <p className="text-[11px] text-slate-400">Total: ${qt.total} USD • {qt.status}</p>
+                          <p className="text-[11px] text-slate-400">Total: {formatMoney(qt.total || 0)} • {qt.status}</p>
                         </div>
                         <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-purple-400" />
                       </div>

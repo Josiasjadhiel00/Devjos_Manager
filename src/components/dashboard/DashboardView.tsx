@@ -56,6 +56,8 @@ export const DashboardView: React.FC<{
     setSelectedProjectId,
     toggleTaskStatus,
     settings,
+    formatMoney,
+    currencySymbol,
   } = useApp();
 
   // Financial timeline data for chart
@@ -143,7 +145,7 @@ export const DashboardView: React.FC<{
         />
         <StatCard
           title="Ingresos Registrados"
-          value={`$${(metrics?.monthlyRevenue || 0).toLocaleString()} USD`}
+          value={formatMoney(metrics?.monthlyRevenue || 0)}
           subtitle="Facturación acumulada"
           icon={TrendingUp}
           colorScheme="emerald"
@@ -152,7 +154,7 @@ export const DashboardView: React.FC<{
         />
         <StatCard
           title="Dinero por Cobrar"
-          value={`$${(metrics?.totalPendingReceivables || 0).toLocaleString()} USD`}
+          value={formatMoney(metrics?.totalPendingReceivables || 0)}
           subtitle="Saldos pendientes de clientes"
           icon={Clock}
           colorScheme="amber"
@@ -163,7 +165,7 @@ export const DashboardView: React.FC<{
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         <StatCard
           title="Gastos Operativos"
-          value={`$${(metrics?.monthlyExpenses || 0).toLocaleString()} USD`}
+          value={formatMoney(metrics?.monthlyExpenses || 0)}
           subtitle="Software, equipo y transporte"
           icon={TrendingDown}
           colorScheme="rose"
@@ -171,7 +173,7 @@ export const DashboardView: React.FC<{
         />
         <StatCard
           title="Ganancia Neta Calculada"
-          value={`$${(metrics?.monthlyProfit || 0).toLocaleString()} USD`}
+          value={formatMoney(metrics?.monthlyProfit || 0)}
           subtitle="Ingresos netos tras deducción"
           icon={DollarSign}
           colorScheme="purple"
@@ -196,7 +198,7 @@ export const DashboardView: React.FC<{
               <h3 className="text-sm font-bold text-slate-100 font-display">
                 Flujo Financiero (Ingresos vs Gastos)
               </h3>
-              <p className="text-xs text-slate-400">Evolución de ingresos y margen de ganancia en USD</p>
+              <p className="text-xs text-slate-400">Evolución de ingresos y margen de ganancia en {settings.currency || 'DOP'}</p>
             </div>
             <div className="flex items-center gap-3 text-xs">
               <span className="flex items-center gap-1 text-cyan-400">
@@ -223,7 +225,7 @@ export const DashboardView: React.FC<{
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} tickFormatter={(val) => `$${val}`} />
+                <YAxis stroke="#64748b" fontSize={11} tickFormatter={(val) => `${currencySymbol}${val}`} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#0f172a',
@@ -232,7 +234,7 @@ export const DashboardView: React.FC<{
                     fontSize: '12px',
                     color: '#f8fafc',
                   }}
-                  formatter={(val: any) => [`$${val} USD`, '']}
+                  formatter={(val: any) => [formatMoney(val), '']}
                 />
                 <Area
                   type="monotone"
@@ -389,7 +391,7 @@ export const DashboardView: React.FC<{
                     </td>
                     <td className="py-3 text-slate-300">{p.deliveryDate}</td>
                     <td className="py-3 font-semibold text-slate-100">
-                      ${(p.price || 0).toLocaleString()} USD
+                      {formatMoney(p.price || 0)}
                     </td>
                     <td className="py-3 text-right">
                       <button

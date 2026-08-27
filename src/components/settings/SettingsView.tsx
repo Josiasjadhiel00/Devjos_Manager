@@ -28,12 +28,18 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NasBrandType } from '../../types';
+import { getCurrencySymbol } from '../../utils/formatCurrency';
 
 export const SettingsView: React.FC = () => {
   const { settings, updateSettings, testNasConnection, createNasFoldersTree, resetToDemoData } = useApp();
 
   const [formData, setFormData] = useState({ ...settings });
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Sync formData when settings change
+  React.useEffect(() => {
+    setFormData({ ...settings });
+  }, [settings]);
   const [isTestingNas, setIsTestingNas] = useState(false);
   const [nasTestResult, setNasTestResult] = useState<{
     success: boolean;
@@ -574,14 +580,21 @@ export const SettingsView: React.FC = () => {
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Moneda Principal</label>
               <select
-                value={formData.currency || 'USD'}
-                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+                value={formData.currency || 'DOP'}
+                onChange={(e) => {
+                  const newCurr = e.target.value;
+                  setFormData({ 
+                    ...formData, 
+                    currency: newCurr, 
+                    currencySymbol: getCurrencySymbol(newCurr) 
+                  });
+                }}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none font-semibold text-cyan-300"
               >
-                <option value="USD">USD ($) - Dólares Americanos</option>
                 <option value="DOP">DOP (RD$) - Pesos Dominicanos</option>
+                <option value="USD">USD ($) - Dólares Americanos</option>
                 <option value="EUR">EUR (€) - Euros</option>
-                <option value="MXN">MXN ($) - Pesos Mexicanos</option>
+                <option value="MXN">MXN (MX$) - Pesos Mexicanos</option>
               </select>
             </div>
 

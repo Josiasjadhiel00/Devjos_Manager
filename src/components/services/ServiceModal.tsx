@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Tag, ListPlus, Clock, Check } from 'lucide-react';
 import { Service, ServiceCategory } from '../../types';
+import { useApp } from '../../context/AppContext';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
   onSave,
   serviceToEdit,
 }) => {
+  const { currencyCode, currencySymbol } = useApp();
   const [formData, setFormData] = useState({
     name: '',
     category: 'Desarrollo' as ServiceCategory,
@@ -134,17 +136,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Precio Base Sugerido (USD) *
+                Precio Base Sugerido ({currencyCode}) *
               </label>
               <div className="relative">
-                <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <span className="text-xs font-semibold text-cyan-400 absolute left-3 top-2.5">
+                  {currencySymbol}
+                </span>
                 <input
                   type="number"
                   min="0"
                   required
                   value={formData.basePrice}
                   onChange={(e) => setFormData({ ...formData, basePrice: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 focus:outline-none"
+                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl pl-12 pr-3 py-2 text-xs text-slate-100 focus:outline-none"
                 />
               </div>
             </div>

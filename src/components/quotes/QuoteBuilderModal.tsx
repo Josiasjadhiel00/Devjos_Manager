@@ -16,7 +16,7 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
   onSave,
   quoteToEdit,
 }) => {
-  const { clients, services } = useApp();
+  const { clients, services, formatMoney, currencyCode, currencySymbol } = useApp();
 
   const [clientId, setClientId] = useState('');
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
@@ -247,7 +247,7 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
                       </option>
                       {services.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {s.name} (${s.basePrice})
+                          {s.name} ({formatMoney(s.basePrice)})
                         </option>
                       ))}
                     </select>
@@ -275,7 +275,7 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
                       </div>
 
                       <div className="w-28 relative">
-                        <span className="absolute left-2 top-1.5 text-[11px] text-slate-400">$</span>
+                        <span className="absolute left-2 top-1.5 text-[11px] text-slate-400">{currencySymbol}</span>
                         <input
                           type="number"
                           min="0"
@@ -284,12 +284,12 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
                           onChange={(e) =>
                             handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)
                           }
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-5 pr-2 py-1.5 text-xs text-slate-100"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-7 pr-2 py-1.5 text-xs text-slate-100"
                         />
                       </div>
 
                       <span className="w-24 text-right font-bold text-xs text-slate-200">
-                        ${(item.total || 0).toLocaleString()}
+                        {formatMoney(item.total || 0)}
                       </span>
 
                       {items.length > 1 && (
@@ -340,7 +340,7 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
             <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5 text-xs">
               <div className="flex justify-between text-slate-400">
                 <span>Subtotal Bruto:</span>
-                <span className="font-semibold text-slate-200">${(subtotal || 0).toLocaleString()} USD</span>
+                <span className="font-semibold text-slate-200">{formatMoney(subtotal || 0)}</span>
               </div>
 
               <div className="flex items-center justify-between">
@@ -374,14 +374,14 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
               {taxAmount > 0 && (
                 <div className="flex justify-between text-slate-400">
                   <span>Monto Impuesto:</span>
-                  <span className="text-slate-200">+${(taxAmount || 0).toFixed(2)} USD</span>
+                  <span className="text-slate-200">+{formatMoney(taxAmount || 0)}</span>
                 </div>
               )}
 
               <div className="pt-2 border-t border-slate-800 flex justify-between items-center">
                 <span className="text-sm font-bold text-white font-display">TOTAL COTIZADO:</span>
                 <span className="text-lg font-bold text-cyan-400 font-display">
-                  ${(total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  {formatMoney(total || 0)}
                 </span>
               </div>
             </div>

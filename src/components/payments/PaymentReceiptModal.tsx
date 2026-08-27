@@ -18,7 +18,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
   specificMethod,
   specificDate,
 }) => {
-  const { clients, projects, settings } = useApp();
+  const { clients, projects, settings, formatMoney } = useApp();
 
   if (!payment) return null;
 
@@ -130,7 +130,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                     </p>
                   </td>
                   <td className="py-3 px-3 text-right font-bold text-emerald-400 text-sm print:text-black">
-                    ${amountPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })} {settings.currency || 'USD'}
+                    {formatMoney(amountPaid || 0)}
                   </td>
                 </tr>
               </tbody>
@@ -158,19 +158,19 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
               <div className="flex justify-between text-slate-400 print:text-gray-600">
                 <span>Total Contrato:</span>
                 <span className="font-mono text-slate-200 print:text-black">
-                  ${payment.totalContract.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {formatMoney(payment.totalContract || 0)}
                 </span>
               </div>
               <div className="flex justify-between text-slate-400 print:text-gray-600">
                 <span>Total Pagado a la fecha:</span>
                 <span className="font-mono text-emerald-400 font-semibold print:text-black">
-                  ${payment.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {formatMoney(payment.totalPaid || 0)}
                 </span>
               </div>
               <div className="pt-1.5 border-t border-slate-800 flex justify-between font-bold text-white print:text-black">
                 <span>Saldo Pendiente:</span>
                 <span className="font-mono text-cyan-400">
-                  ${payment.totalPending.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {formatMoney(payment.totalPending || 0)}
                 </span>
               </div>
             </div>

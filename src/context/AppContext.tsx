@@ -47,6 +47,7 @@ import {
 } from '../data/initialData';
 import { canAccessView } from '../utils/permissions';
 import { subscribeToStudioData, saveStudioDataToFirestore, StudioSyncPayload } from '../lib/firestoreSync';
+import { formatCurrency, getCurrencySymbol } from '../utils/formatCurrency';
 
 export type ActiveView = 
   | 'dashboard'
@@ -200,6 +201,11 @@ interface AppContextType {
   updateSettings: (updates: Partial<StudioSettings>) => void;
   resetToDemoData: () => void;
 
+  // Currency & Money Formatting Helpers
+  formatMoney: (amount: number | string | undefined | null, options?: { hideDecimalsIfWhole?: boolean; includeCode?: boolean }) => string;
+  currencySymbol: string;
+  currencyCode: string;
+
   // Computed Metrics
   metrics: {
     totalClients: number;
@@ -227,14 +233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const savedUser = localStorage.getItem('devjos_auth_session');
       if (savedUser) return JSON.parse(savedUser);
     } catch (e) {}
-    return {
-      id: initialTeam[0].id,
-      name: initialTeam[0].name,
-      email: initialTeam[0].email,
-      role: initialTeam[0].role,
-      avatar: initialTeam[0].avatar,
-      phone: initialTeam[0].phone,
-    };
+    return null;
   });
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -471,6 +470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setCurrentUser(authUser);
       setCurrentUserRole(member.role);
+      localStorage.setItem('devjos_auth_session', JSON.stringify(authUser));
       setIsAuthModalOpen(false);
       addActivity('Inició sesión en el sistema', 'Sesión', member.name);
       addNotification('Sesión Iniciada', `Bienvenido de vuelta, ${member.name} (${member.role})`, 'system');
@@ -490,6 +490,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setCurrentUser(clientUser);
       setCurrentUserRole('Cliente');
+      localStorage.setItem('devjos_auth_session', JSON.stringify(clientUser));
       setPortalClientId(client.id);
       setCurrentView('client-portal');
       setIsAuthModalOpen(false);
@@ -513,6 +514,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setCurrentUser(authUser);
       setCurrentUserRole(member.role);
+      localStorage.setItem('devjos_auth_session', JSON.stringify(authUser));
       setIsAuthModalOpen(false);
       addActivity('Cambió de usuario activo', 'Sesión', member.name);
       addNotification('Perfil Activo', `Sesión cambiada a ${member.name} (${member.role})`, 'system');
@@ -532,6 +534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setCurrentUser(clientUser);
       setCurrentUserRole('Cliente');
+      localStorage.setItem('devjos_auth_session', JSON.stringify(clientUser));
       setPortalClientId(client.id);
       setCurrentView('client-portal');
       setIsAuthModalOpen(false);
@@ -1176,9 +1179,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // SETTINGS & DEMO RESET
   const updateSettings = (updates: Partial<StudioSettings>) => {
-    const updated = { ...settings, ...updates };
+    const updatedCurrency = updates.currency || settings.currency || 'DOP';
+    const updatedCurrencySymbol = updates.currencySymbol || getCurrencySymbol(updatedCurrency);
+    const updated = { 
+      ...settings, 
+      ...updates,
+      currency: updatedCurrency,
+      currencySymbol: updatedCurrencySymbol,
+    };
     setSettings(updated);
-    addActivity('Actualizó configuración del estudio', 'Configuración', 'Ajustes Generales');
+    addActivity('Actualizó configuración del estudio', 'Configuración', `Moneda: ${updatedCurrency} (${updatedCurrencySymbol})`);
 
     fetch('/api/settings', {
       method: 'POST',
@@ -1340,6 +1350,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addNotification,
         updateSettings,
         resetToDemoData,
+        formatMoney: (amount: number | string | undefined | null, options?: { hideDecimalsIfWhole?: boolean; includeCode?: boolean }) =>
+          formatCurrency(amount, settings.currency || 'DOP', options),
+        currencySymbol: settings.currencySymbol || getCurrencySymbol(settings.currency || 'DOP'),
+        currencyCode: (settings.currency || 'DOP').toUpperCase(),
         metrics: {
           totalClients: clients.length,
           activeProjects,

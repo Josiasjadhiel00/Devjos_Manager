@@ -18,7 +18,7 @@ import { ServiceModal } from './ServiceModal';
 import { Service, ServiceCategory } from '../../types';
 
 export const ServicesView: React.FC = () => {
-  const { services, addService, updateService, deleteService, setCurrentView } = useApp();
+  const { services, addService, updateService, deleteService, setCurrentView, formatMoney } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -143,7 +143,7 @@ export const ServicesView: React.FC = () => {
               <div>
                 <span className="text-[10px] text-slate-500 uppercase font-semibold block">Precio Base</span>
                 <span className="text-base font-bold text-white font-display">
-                  ${(service.basePrice || 0).toLocaleString()} USD
+                  {formatMoney(service.basePrice || 0)}
                 </span>
                 <span className="text-[10px] text-slate-400 block mt-0.5 flex items-center gap-1">
                   <Clock className="w-3 h-3 text-slate-500" /> {service.estimatedTime}

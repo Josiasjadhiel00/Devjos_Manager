@@ -56,7 +56,7 @@ const projectStatusData = [
 ];
 
 export const ReportsView: React.FC = () => {
-  const { metrics, projects, clients, quotes, incomes, expenses } = useApp();
+  const { metrics, projects, clients, quotes, incomes, expenses, formatMoney, currencySymbol } = useApp();
   const [timeRange, setTimeRange] = useState<'30d' | '90d' | '1y'>('90d');
 
   const totalIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
@@ -118,35 +118,31 @@ export const ReportsView: React.FC = () => {
           title="Margen Operativo Neto"
           value={`${marginPercent}%`}
           icon={TrendingUp}
-          trend={{ value: 6.8, isPositive: true }}
-          description={`$${(netProfit || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} de utilidad neta`}
-          iconColor="text-emerald-400"
-          iconBg="bg-emerald-500/10"
+          trend={{ value: '+6.8%', isPositive: true }}
+          description={`${formatMoney(netProfit || 0)} de utilidad neta`}
+          colorScheme="emerald"
         />
         <StatCard
           title="Tasa Conversión Cotizaciones"
           value={`${quoteConversionRate}%`}
           icon={Award}
-          trend={{ value: 12.4, isPositive: true }}
+          trend={{ value: '+12.4%', isPositive: true }}
           description={`${quotes.filter(q => q.status === 'Aprobada').length} presupuestos ganados`}
-          iconColor="text-cyan-400"
-          iconBg="bg-cyan-500/10"
+          colorScheme="cyan"
         />
         <StatCard
           title="Efectividad en Entregas"
           value="94.2%"
           icon={CheckCircle2}
           description="Entregas dentro del cronograma pactado"
-          iconColor="text-purple-400"
-          iconBg="bg-purple-500/10"
+          colorScheme="purple"
         />
         <StatCard
           title="Valor Promedio por Cliente"
-          value={`$${clients.length > 0 ? (Math.round((totalIncome || 0) / clients.length) || 0).toLocaleString() : 0}`}
+          value={formatMoney(clients.length > 0 ? (Math.round((totalIncome || 0) / clients.length) || 0) : 0)}
           icon={Users}
           description="Ticket promedio de servicios contratados"
-          iconColor="text-blue-400"
-          iconBg="bg-blue-500/10"
+          colorScheme="blue"
         />
       </div>
 
@@ -187,9 +183,10 @@ export const ReportsView: React.FC = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="month" stroke="#64748b" textAnchor="middle" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} tickFormatter={v => `$${v}`} />
+                <YAxis stroke="#64748b" fontSize={11} tickFormatter={v => `${currencySymbol}${v}`} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px', color: '#f8fafc' }}
+                  formatter={(val: any) => [formatMoney(val), '']}
                 />
                 <Area type="monotone" dataKey="ingresos" stroke="#06b6d4" strokeWidth={2.5} fillOpacity={1} fill="url(#incomeGrad)" />
                 <Area type="monotone" dataKey="gastos" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#expenseGrad)" />

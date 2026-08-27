@@ -47,6 +47,9 @@ export const FinanceView: React.FC = () => {
     deleteIncome,
     deleteExpense,
     recordPayment,
+    formatMoney,
+    currencySymbol,
+    settings,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'incomes' | 'expenses' | 'receivables'>('overview');
@@ -85,28 +88,28 @@ export const FinanceView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <StatCard
           title="Ingresos Totales"
-          value={`$${(metrics?.monthlyRevenue || 0).toLocaleString()} USD`}
+          value={formatMoney(metrics?.monthlyRevenue || 0)}
           subtitle="Cobros y anticipos registrados"
           icon={TrendingUp}
           colorScheme="emerald"
         />
         <StatCard
           title="Gastos Operativos"
-          value={`$${(metrics?.monthlyExpenses || 0).toLocaleString()} USD`}
+          value={formatMoney(metrics?.monthlyExpenses || 0)}
           subtitle="Software, equipo y servicios"
           icon={TrendingDown}
           colorScheme="rose"
         />
         <StatCard
           title="Ganancia Neta (Margen)"
-          value={`$${(metrics?.monthlyProfit || 0).toLocaleString()} USD`}
+          value={formatMoney(metrics?.monthlyProfit || 0)}
           subtitle={`${Math.round(((metrics?.monthlyProfit || 0) / (metrics?.monthlyRevenue || 1)) * 100)}% de margen de beneficio`}
           icon={DollarSign}
           colorScheme="purple"
         />
         <StatCard
           title="Por Cobrar (Pendiente)"
-          value={`$${(metrics?.totalPendingReceivables || 0).toLocaleString()} USD`}
+          value={formatMoney(metrics?.totalPendingReceivables || 0)}
           subtitle={`${pendingProjects.length} proyectos con saldo`}
           icon={Clock}
           colorScheme="amber"
@@ -186,7 +189,7 @@ export const FinanceView: React.FC = () => {
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => `$${v}`} />
+                  <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => `${currencySymbol}${v}`} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#0f172a',
@@ -194,7 +197,7 @@ export const FinanceView: React.FC = () => {
                       borderRadius: '0.75rem',
                       fontSize: '12px',
                     }}
-                    formatter={(val: any) => [`$${val} USD`, '']}
+                    formatter={(val: any) => [formatMoney(val), '']}
                   />
                   <Bar dataKey="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Gastos" fill="#f43f5e" radius={[4, 4, 0, 0]} />
@@ -231,7 +234,7 @@ export const FinanceView: React.FC = () => {
                       borderRadius: '0.75rem',
                       fontSize: '12px',
                     }}
-                    formatter={(val: any) => [`$${val} USD`, 'Gasto']}
+                    formatter={(val: any) => [formatMoney(val), 'Gasto']}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -244,7 +247,7 @@ export const FinanceView: React.FC = () => {
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                     {item.name}
                   </span>
-                  <span className="font-bold text-slate-200">${item.value} USD</span>
+                  <span className="font-bold text-slate-200">{formatMoney(item.value)}</span>
                 </div>
               ))}
             </div>
@@ -283,7 +286,7 @@ export const FinanceView: React.FC = () => {
                       <td className="p-4 text-slate-200">{inc.concept || inc.description}</td>
                       <td className="p-4 text-slate-400">{inc.method}</td>
                       <td className="p-4 text-right font-bold text-emerald-400 text-sm font-display">
-                        +${(inc.amount || 0).toLocaleString()} USD
+                        +{formatMoney(inc.amount || 0)}
                       </td>
                       <td className="p-4 text-right">
                         <button
@@ -335,7 +338,7 @@ export const FinanceView: React.FC = () => {
                     <td className="p-4 text-slate-400">{exp.method}</td>
                     <td className="p-4 text-slate-400 text-[11px]">{exp.notes || '—'}</td>
                     <td className="p-4 text-right font-bold text-rose-400 text-sm font-display">
-                      -${(exp.amount || 0).toLocaleString()} USD
+                      -{formatMoney(exp.amount || 0)}
                     </td>
                     <td className="p-4 text-right">
                       <button
@@ -387,12 +390,12 @@ export const FinanceView: React.FC = () => {
                       <td className="py-3 text-slate-300">
                         {item.client?.company || item.client?.name || 'Particular'}
                       </td>
-                      <td className="py-3 font-semibold text-slate-200">${item.price} USD</td>
+                      <td className="py-3 font-semibold text-slate-200">{formatMoney(item.price)}</td>
                       <td className="py-3 text-emerald-400 font-semibold">
-                        ${item.paidAmount || 0} USD
+                        {formatMoney(item.paidAmount || 0)}
                       </td>
                       <td className="py-3 font-bold text-amber-400 font-display">
-                        ${item.pending} USD
+                        {formatMoney(item.pending)}
                       </td>
                       <td className="py-3 text-right">
                         <button

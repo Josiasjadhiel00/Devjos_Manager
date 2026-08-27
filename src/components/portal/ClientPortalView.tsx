@@ -31,6 +31,7 @@ export const ClientPortalView: React.FC = () => {
     files,
     updateQuote,
     setCurrentView,
+    formatMoney,
   } = useApp();
 
   const activeClientId = portalClientId || clients[0]?.id || '';
@@ -218,7 +219,7 @@ export const ClientPortalView: React.FC = () => {
                       Fecha pactada: {proj.deliveryDate || proj.startDate || 'Pendiente'}
                     </span>
                     <span className="font-mono text-slate-300 font-semibold">
-                      Presupuesto: ${(proj.price || 0).toLocaleString()} USD
+                      Presupuesto: {formatMoney(proj.price || 0)}
                     </span>
                   </div>
                 </div>
@@ -275,20 +276,20 @@ export const ClientPortalView: React.FC = () => {
 
                   {/* Items summary */}
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1.5 text-xs">
-                    {quote.items.map((it, idx) => (
+                    {quote.items.map((it: any, idx) => (
                       <div key={idx} className="flex items-center justify-between text-slate-300">
                         <span className="truncate pr-2">
-                          {it.quantity}x {it.serviceName}
+                          {it.quantity}x {it.description || it.serviceName}
                         </span>
                         <span className="font-mono font-semibold text-slate-200">
-                          ${(it.total || 0).toLocaleString()}
+                          {formatMoney(it.total || 0)}
                         </span>
                       </div>
                     ))}
                     <div className="pt-2 border-t border-slate-800 flex items-center justify-between font-bold text-white text-sm">
                       <span>Total Presupuesto:</span>
                       <span className="font-mono text-cyan-400">
-                        ${(quote.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {formatMoney(quote.total || 0)}
                       </span>
                     </div>
                   </div>
