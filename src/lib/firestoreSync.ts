@@ -31,6 +31,8 @@ export interface StudioSyncPayload {
   updatedBy?: string;
 }
 
+let firestoreErrorLogged = false;
+
 /**
  * Subscribes to real-time changes in Firestore.
  */
@@ -50,12 +52,18 @@ export function subscribeToStudioData(
         }
       },
       (err) => {
-        console.warn('Firestore subscription status:', err.message || err);
+        if (!firestoreErrorLogged) {
+          firestoreErrorLogged = true;
+          console.info('Firestore status: Database not active or running in offline mode.');
+        }
         if (onError) onError(err);
       }
     );
   } catch (err) {
-    console.warn('Could not establish Firestore listener:', err);
+    if (!firestoreErrorLogged) {
+      firestoreErrorLogged = true;
+      console.info('Could not establish Firestore listener.');
+    }
     if (onError) onError(err);
     return () => {};
   }

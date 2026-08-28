@@ -88,10 +88,20 @@ apiRouter.get('/init-db', async (req, res) => {
 apiRouter.get('/bootstrap', optionalAuth, async (req: AuthRequest, res) => {
   try {
     const data = await getAllAppData();
-    res.json(data);
+    if (data) {
+      res.json(data);
+    } else {
+      res.json({
+        isConnected: false,
+        message: 'PostgreSQL aún no está inicializado o no hay cadena de conexión activa.',
+      });
+    }
   } catch (error: any) {
-    console.error('Failed to fetch app data from PostgreSQL:', error);
-    res.status(500).json({ error: error.message || 'Failed to fetch database data' });
+    console.warn('PostgreSQL bootstrap info:', error?.message || error);
+    res.json({
+      isConnected: false,
+      error: error?.message || 'Database not ready',
+    });
   }
 });
 
@@ -328,8 +338,11 @@ apiRouter.post('/sync-all', optionalAuth, async (req: AuthRequest, res) => {
     const result = await syncAllAppData(req.body);
     res.json(result);
   } catch (error: any) {
-    console.error('Error executing bulk sync in DB:', error);
-    res.status(500).json({ error: error.message || 'Failed to bulk sync data' });
+    console.warn('Bulk sync to PostgreSQL info:', error?.message || error);
+    res.status(200).json({
+      success: false,
+      error: error?.message || 'Database not ready for bulk sync',
+    });
   }
 });
 

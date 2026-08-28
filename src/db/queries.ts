@@ -282,6 +282,8 @@ export async function ensureDatabaseSeeded() {
 // Fetch all database records for initial client hydrate
 export async function getAllAppData() {
   try {
+    await ensureDatabaseSeeded();
+
     const [
       settingsRows,
       clientsList,
@@ -299,70 +301,70 @@ export async function getAllAppData() {
       calendarEventsList,
       teamList,
     ] = await Promise.all([
-      db.select().from(schema.studioSettings).where(eq(schema.studioSettings.id, 'default')),
-      db.select().from(schema.clients),
-      db.select().from(schema.projects),
-      db.select().from(schema.tasks),
-      db.select().from(schema.services),
-      db.select().from(schema.quotes),
-      db.select().from(schema.incomes),
-      db.select().from(schema.expenses),
-      db.select().from(schema.payments),
-      db.select().from(schema.photoSessions),
-      db.select().from(schema.galleries),
-      db.select().from(schema.mediaProjects),
-      db.select().from(schema.projectFiles),
-      db.select().from(schema.calendarEvents),
-      db.select().from(schema.teamMembers),
+      db.select().from(schema.studioSettings).where(eq(schema.studioSettings.id, 'default')).catch(() => []),
+      db.select().from(schema.clients).catch(() => []),
+      db.select().from(schema.projects).catch(() => []),
+      db.select().from(schema.tasks).catch(() => []),
+      db.select().from(schema.services).catch(() => []),
+      db.select().from(schema.quotes).catch(() => []),
+      db.select().from(schema.incomes).catch(() => []),
+      db.select().from(schema.expenses).catch(() => []),
+      db.select().from(schema.payments).catch(() => []),
+      db.select().from(schema.photoSessions).catch(() => []),
+      db.select().from(schema.galleries).catch(() => []),
+      db.select().from(schema.mediaProjects).catch(() => []),
+      db.select().from(schema.projectFiles).catch(() => []),
+      db.select().from(schema.calendarEvents).catch(() => []),
+      db.select().from(schema.teamMembers).catch(() => []),
     ]);
 
-    const settings = settingsRows[0] ? JSON.parse(settingsRows[0].settingsJson) : initialSettings;
+    const settings = settingsRows && settingsRows[0] ? JSON.parse(settingsRows[0].settingsJson) : initialSettings;
 
-    const quotes = quotesList.map(q => ({
+    const quotes = (quotesList || []).map(q => ({
       ...q,
       items: JSON.parse(q.itemsJson || '[]'),
     }));
 
-    const payments = paymentsList.map(p => ({
+    const payments = (paymentsList || []).map(p => ({
       ...p,
       additionalPayments: JSON.parse(p.additionalPaymentsJson || '[]'),
     }));
 
-    const galleries = galleriesList.map(g => ({
+    const galleries = (galleriesList || []).map(g => ({
       ...g,
       images: JSON.parse(g.imagesJson || '[]'),
     }));
 
-    const mediaProjects = mediaProjectsList.map(m => ({
+    const mediaProjects = (mediaProjectsList || []).map(m => ({
       ...m,
       versions: JSON.parse(m.versionsJson || '[]'),
     }));
 
-    const team = teamList.map(tm => ({
+    const team = (teamList || []).map(tm => ({
       ...tm,
       skills: JSON.parse(tm.skillsJson || '[]'),
     }));
 
     return {
       settings,
-      clients: clientsList,
-      projects: projectsList,
-      tasks: tasksList,
-      services: servicesList,
+      clients: clientsList || [],
+      projects: projectsList || [],
+      tasks: tasksList || [],
+      services: servicesList || [],
       quotes,
-      incomes: incomesList,
-      expenses: expensesList,
+      incomes: incomesList || [],
+      expenses: expensesList || [],
       payments,
-      photoSessions: photoSessionsList,
+      photoSessions: photoSessionsList || [],
       galleries,
       mediaProjects,
-      files: filesList,
-      calendarEvents: calendarEventsList,
-      team,
+      files: filesList || [],
+      calendarEvents: calendarEventsList || [],
+      team: team.length > 0 ? team : initialTeam,
     };
   } catch (error) {
     console.error('Database query failed in getAllAppData:', error);
-    throw new Error('Database query failed. Please try again later.', { cause: error });
+    return null;
   }
 }
 
