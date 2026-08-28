@@ -46,7 +46,14 @@ import {
   initialActivityLogs,
 } from '../data/initialData';
 import { canAccessView } from '../utils/permissions';
-import { subscribeToStudioData, saveStudioDataToFirestore, testFirestoreConnection, StudioSyncPayload } from '../lib/firestoreSync';
+import { 
+  subscribeToStudioData, 
+  saveStudioDataToFirestore, 
+  directForceSaveToFirestore,
+  getStudioDataOnce,
+  testFirestoreConnection, 
+  StudioSyncPayload 
+} from '../lib/firestoreSync';
 import { formatCurrency, getCurrencySymbol } from '../utils/formatCurrency';
 
 export type ActiveView = 
@@ -93,8 +100,12 @@ interface AppContextType {
   // Database status
   isDatabaseConnected: boolean;
   syncStatus: 'idle' | 'syncing' | 'connected' | 'offline';
-  refreshDataFromDb: () => Promise<void>;
+  refreshDataFromDb: () => Promise<any>;
   testFirestoreConnection: () => Promise<{ success: boolean; message: string }>;
+  forceUploadToFirestore: () => Promise<{ success: boolean; message: string }>;
+  forceDownloadFromFirestore: () => Promise<{ success: boolean; message: string }>;
+  syncToPostgres: (customPayload?: any) => Promise<{ success: boolean; message: string }>;
+  checkVercelDbStatus: () => Promise<{ success: boolean; message: string; connected?: boolean; totalClientsInPostgres?: number }>;
 
   // Selection States for deep-linking / modals
   selectedClientId: string | null;
@@ -305,7 +316,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Keep ref of latest state to avoid recreate dependencies
+  // Force upload current local dataset to Firestore
+  const forceUploadToFirestore = useCallback(async () => {
+    const payload: StudioSyncPayload = {
+      settings,
+      clients,
+      projects,
+      tasks,
+      services,
+      quotes,
+      incomes,
+      expenses,
+      payments,
+      photoSessions,
+      galleries,
+      mediaProjects,
+      files,
+      calendarEvents,
+      team,
+      notifications,
+      activityLogs,
+      theme,
+    };
+    const result = await directForceSaveToFirestore(payload, currentUser?.name);
+    if (result.success) {
+      setIsDatabaseConnected(true);
+      setSyncStatus('connected');
+    }
+    return result;
+  }, [
+    settings,
+    clients,
+    projects,
+    tasks,
+    services,
+    quotes,
+    incomes,
+    expenses,
+    payments,
+    photoSessions,
+    galleries,
+    mediaProjects,
+    files,
+    calendarEvents,
+    team,
+    notifications,
+    activityLogs,
+    theme,
+    currentUser?.name,
+  ]);
+
+  // Force download cloud dataset from Firestore
+  const forceDownloadFromFirestore = useCallback(async () => {
+    const cloudData = await getStudioDataOnce();
+    if (cloudData) {
+      if (cloudData.settings) setSettings(cloudData.settings);
+      if (cloudData.clients) setClients(cloudData.clients);
+      if (cloudData.projects) setProjects(cloudData.projects);
+      if (cloudData.tasks) setTasks(cloudData.tasks);
+      if (cloudData.services) setServices(cloudData.services);
+      if (cloudData.quotes) setQuotes(cloudData.quotes);
+      if (cloudData.incomes) setIncomes(cloudData.incomes);
+      if (cloudData.expenses) setExpenses(cloudData.expenses);
+      if (cloudData.payments) setPayments(cloudData.payments);
+      if (cloudData.photoSessions) setPhotoSessions(cloudData.photoSessions);
+      if (cloudData.galleries) setGalleries(cloudData.galleries);
+      if (cloudData.mediaProjects) setMediaProjects(cloudData.mediaProjects);
+      if (cloudData.files) setFiles(cloudData.files);
+      if (cloudData.calendarEvents) setCalendarEvents(cloudData.calendarEvents);
+      if (cloudData.team) setTeam(cloudData.team);
+      if (cloudData.notifications) setNotifications(cloudData.notifications);
+      if (cloudData.activityLogs) setActivityLogs(cloudData.activityLogs);
+      setIsDatabaseConnected(true);
+      setSyncStatus('connected');
+      return { success: true, message: 'Datos descargados y actualizados correctamente desde Firestore.' };
+    }
+    return { success: false, message: 'No se encontraron datos en Firestore o la base de datos no está creada.' };
+  }, []);
   const stateRef = useRef({
     settings,
     clients,
@@ -332,17 +419,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [settings, clients, projects, tasks, services, quotes, incomes, expenses, payments]);
 
-  // Sync current state to PostgreSQL in bulk
+  // Check Vercel Postgres diagnostic status
+  const checkVercelDbStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/db-status');
+      const data = await res.json();
+      return data;
+    } catch (e: any) {
+      return {
+        success: false,
+        connected: false,
+        message: 'No se pudo contactar con el endpoint de base de datos (/api/db-status): ' + (e?.message || String(e)),
+      };
+    }
+  }, []);
+
+  // Sync current state to PostgreSQL / Vercel Postgres in bulk
   const syncToPostgres = useCallback(async (customPayload?: any) => {
     try {
       const payloadToSync = customPayload || stateRef.current;
-      await fetch('/api/sync-all', {
+      const res = await fetch('/api/sync-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadToSync),
       });
-    } catch (e) {
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          success: true,
+          message: '¡Datos sincronizados y subidos exitosamente a PostgreSQL en Vercel!',
+        };
+      }
+      const errData = await res.json().catch(() => ({ error: 'Error desconocido del servidor' }));
+      return {
+        success: false,
+        message: `Error al subir a PostgreSQL: ${errData.error || res.statusText}`,
+      };
+    } catch (e: any) {
       console.warn('Bulk sync to PostgreSQL info:', e);
+      return {
+        success: false,
+        message: `Error de conexión con la API de Vercel/Postgres: ${e?.message || String(e)}`,
+      };
     }
   }, []);
 
@@ -1316,6 +1434,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         syncStatus,
         refreshDataFromDb,
         testFirestoreConnection,
+        forceUploadToFirestore,
+        forceDownloadFromFirestore,
+        syncToPostgres,
+        checkVercelDbStatus,
         selectedClientId,
         setSelectedClientId,
         selectedProjectId,

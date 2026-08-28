@@ -115,6 +115,46 @@ export async function getStudioDataOnce(): Promise<StudioSyncPayload | null> {
 }
 
 /**
+ * Forces an immediate save to Firestore without debounce delay.
+ */
+export async function directForceSaveToFirestore(
+  payload: StudioSyncPayload,
+  userName?: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, STUDIO_DOC_ID);
+    const cleanPayload: StudioSyncPayload = {
+      ...payload,
+      lastUpdated: new Date().toISOString(),
+      updatedBy: userName || 'Sistema',
+    };
+    await setDoc(docRef, cleanPayload, { merge: true });
+    return {
+      success: true,
+      message: '¡Datos sincronizados y subidos exitosamente a Firebase Firestore!',
+    };
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    if (msg.includes('permission-denied') || msg.includes('PERMISSION_DENIED')) {
+      return {
+        success: false,
+        message: 'Permiso denegado por las reglas de Firestore. Ve a Firebase Console > Firestore Database > Reglas y permite allow read, write: if true;.',
+      };
+    }
+    if (msg.includes('not-found') || msg.includes('NOT_FOUND') || msg.includes('Failed to get document')) {
+      return {
+        success: false,
+        message: 'La base de datos Firestore aún no existe en tu consola de Firebase (estudio-devjos). Entra a https://console.firebase.google.com/project/estudio-devjos/firestore y pulsa "Crear base de datos".',
+      };
+    }
+    return {
+      success: false,
+      message: `Error al subir a Firestore: ${msg}`,
+    };
+  }
+}
+
+/**
  * Saves or updates studio state in Firestore.
  */
 let debounceTimer: any = null;

@@ -13,12 +13,15 @@ import {
   User,
   LogOut,
   Fingerprint,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const Topbar: React.FC<{ onOpenMobileMenu: () => void }> = ({ onOpenMobileMenu }) => {
   const {
     currentView,
+    setCurrentView,
     theme,
     toggleTheme,
     notifications,
@@ -30,6 +33,8 @@ export const Topbar: React.FC<{ onOpenMobileMenu: () => void }> = ({ onOpenMobil
     setIsUserProfileModalOpen,
     setIsAuthModalOpen,
     settings,
+    isDatabaseConnected,
+    syncStatus,
   } = useApp();
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -77,9 +82,28 @@ export const Topbar: React.FC<{ onOpenMobileMenu: () => void }> = ({ onOpenMobil
                 <HardDrive className="w-3 h-3" /> NAS
               </span>
             )}
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-cyan-400 border border-cyan-500/20" title="Base de datos Cloud SQL PostgreSQL activa">
-              <Database className="w-3 h-3 text-cyan-400" /> PostgreSQL SQL
-            </span>
+            {isDatabaseConnected && syncStatus === 'connected' ? (
+              <span 
+                className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                title="Sincronización en tiempo real activa entre todos los usuarios y dispositivos"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Cloud Sync Activo
+              </span>
+            ) : syncStatus === 'syncing' ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-cyan-400 border border-cyan-500/20">
+                <RefreshCw className="w-3 h-3 text-cyan-400 animate-spin" /> Conectando...
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCurrentView('settings')}
+                className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-colors"
+                title="Haz clic para ver diagnóstico de Firestore y conectar en la nube"
+              >
+                <AlertCircle className="w-3 h-3 text-amber-400" /> Modo Local (Sin Conectar)
+              </button>
+            )}
           </div>
           <p className="hidden md:block text-xs text-slate-400">
             {currentMeta.subtitle}
