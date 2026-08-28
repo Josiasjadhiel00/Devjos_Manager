@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Client,
   Project,
@@ -229,13 +229,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dataLoaded, setDataLoaded] = useState(false);
   const [currentView, setCurrentView] = useState<ActiveView>('dashboard');
   const [currentUserRole, setCurrentUserRole] = useState<RoleType>('Administrador');
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    try {
-      const savedUser = localStorage.getItem('devjos_auth_session');
-      if (savedUser) return JSON.parse(savedUser);
-    } catch (e) {}
-    return null;
-  });
+  // Always initialize with null so every reload starts at the Login Screen
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
@@ -299,6 +294,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (data.team && data.team.length > 0) setTeam(data.team);
         setIsDatabaseConnected(true);
         setSyncStatus('connected');
+        return data;
       } else {
         setSyncStatus('connected');
       }
@@ -309,38 +305,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Initial load & Real-time Firestore Sync
+  // Keep ref of latest state to avoid recreate dependencies
+  const stateRef = useRef({
+    settings,
+    clients,
+    projects,
+    tasks,
+    services,
+    quotes,
+    incomes,
+    expenses,
+    payments,
+  });
+
   useEffect(() => {
-    // 1. Load from local cache for instant zero-delay render
+    stateRef.current = {
+      settings,
+      clients,
+      projects,
+      tasks,
+      services,
+      quotes,
+      incomes,
+      expenses,
+      payments,
+    };
+  }, [settings, clients, projects, tasks, services, quotes, incomes, expenses, payments]);
+
+  // Sync current state to PostgreSQL in bulk
+  const syncToPostgres = useCallback(async (customPayload?: any) => {
+    try {
+      const payloadToSync = customPayload || stateRef.current;
+      await fetch('/api/sync-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadToSync),
+      });
+    } catch (e) {
+      console.warn('Bulk sync to PostgreSQL info:', e);
+    }
+  }, []);
+
+  // Initial load & Real-time Firestore + PostgreSQL Sync
+  useEffect(() => {
+    // 1. Load from local cache for instant initial render
+    let parsedLocal: any = null;
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.settings) setSettings(parsed.settings);
-        if (parsed.clients) setClients(parsed.clients);
-        if (parsed.projects) setProjects(parsed.projects);
-        if (parsed.tasks) setTasks(parsed.tasks);
-        if (parsed.services) setServices(parsed.services);
-        if (parsed.quotes) setQuotes(parsed.quotes);
-        if (parsed.incomes) setIncomes(parsed.incomes);
-        if (parsed.expenses) setExpenses(parsed.expenses);
-        if (parsed.payments) setPayments(parsed.payments);
-        if (parsed.photoSessions) setPhotoSessions(parsed.photoSessions);
-        if (parsed.galleries) setGalleries(parsed.galleries);
-        if (parsed.mediaProjects) setMediaProjects(parsed.mediaProjects);
-        if (parsed.files) setFiles(parsed.files);
-        if (parsed.calendarEvents) setCalendarEvents(parsed.calendarEvents);
-        if (parsed.team) setTeam(parsed.team);
-        if (parsed.notifications) setNotifications(parsed.notifications);
-        if (parsed.activityLogs) setActivityLogs(parsed.activityLogs);
-        if (parsed.theme) setTheme(parsed.theme);
+        parsedLocal = JSON.parse(saved);
+        if (parsedLocal.settings) setSettings(parsedLocal.settings);
+        if (parsedLocal.clients) setClients(parsedLocal.clients);
+        if (parsedLocal.projects) setProjects(parsedLocal.projects);
+        if (parsedLocal.tasks) setTasks(parsedLocal.tasks);
+        if (parsedLocal.services) setServices(parsedLocal.services);
+        if (parsedLocal.quotes) setQuotes(parsedLocal.quotes);
+        if (parsedLocal.incomes) setIncomes(parsedLocal.incomes);
+        if (parsedLocal.expenses) setExpenses(parsedLocal.expenses);
+        if (parsedLocal.payments) setPayments(parsedLocal.payments);
+        if (parsedLocal.photoSessions) setPhotoSessions(parsedLocal.photoSessions);
+        if (parsedLocal.galleries) setGalleries(parsedLocal.galleries);
+        if (parsedLocal.mediaProjects) setMediaProjects(parsedLocal.mediaProjects);
+        if (parsedLocal.files) setFiles(parsedLocal.files);
+        if (parsedLocal.calendarEvents) setCalendarEvents(parsedLocal.calendarEvents);
+        if (parsedLocal.team) setTeam(parsedLocal.team);
+        if (parsedLocal.notifications) setNotifications(parsedLocal.notifications);
+        if (parsedLocal.activityLogs) setActivityLogs(parsedLocal.activityLogs);
+        if (parsedLocal.theme) setTheme(parsedLocal.theme);
       }
     } catch (e) {
       console.error('Error loading local state', e);
     }
     setDataLoaded(true);
 
-    // 2. Subscribe to Firestore real-time cloud changes
+    // 2. Fetch from PostgreSQL server database on mount
+    refreshDataFromDb().then((dbData) => {
+      // If local cache had clients that are not in the DB, push them to PostgreSQL
+      if (parsedLocal && parsedLocal.clients && (!dbData?.clients || parsedLocal.clients.length > dbData.clients.length)) {
+        syncToPostgres(parsedLocal);
+      }
+    });
+
+    // 3. Subscribe to Firestore real-time cloud changes
     const unsubscribe = subscribeToStudioData(
       (cloudData: StudioSyncPayload) => {
         if (cloudData.settings) setSettings(cloudData.settings);
@@ -372,7 +418,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [refreshDataFromDb]);
+  }, []);
 
   // Save to local storage & Firestore on changes
   useEffect(() => {
@@ -443,13 +489,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [theme]);
 
-  // Sync auth session in localStorage
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('devjos_auth_session', JSON.stringify(currentUser));
-    }
-  }, [currentUser]);
-
   // Auth Methods
   const login = (emailInput: string, passInput: string): { success: boolean; message?: string } => {
     const cleanEmail = emailInput.trim().toLowerCase();
@@ -471,7 +510,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setCurrentUser(authUser);
       setCurrentUserRole(member.role);
-      localStorage.setItem('devjos_auth_session', JSON.stringify(authUser));
       setIsAuthModalOpen(false);
       addActivity('Inició sesión en el sistema', 'Sesión', member.name);
       addNotification('Sesión Iniciada', `Bienvenido de vuelta, ${member.name} (${member.role})`, 'system');
@@ -491,7 +529,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setCurrentUser(clientUser);
       setCurrentUserRole('Cliente');
-      localStorage.setItem('devjos_auth_session', JSON.stringify(clientUser));
       setPortalClientId(client.id);
       setCurrentView('client-portal');
       setIsAuthModalOpen(false);
@@ -515,7 +552,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setCurrentUser(authUser);
       setCurrentUserRole(member.role);
-      localStorage.setItem('devjos_auth_session', JSON.stringify(authUser));
       setIsAuthModalOpen(false);
       addActivity('Cambió de usuario activo', 'Sesión', member.name);
       addNotification('Perfil Activo', `Sesión cambiada a ${member.name} (${member.role})`, 'system');
@@ -535,7 +571,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setCurrentUser(clientUser);
       setCurrentUserRole('Cliente');
-      localStorage.setItem('devjos_auth_session', JSON.stringify(clientUser));
       setPortalClientId(client.id);
       setCurrentView('client-portal');
       setIsAuthModalOpen(false);
@@ -791,14 +826,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setServices(prev => [newService, ...prev]);
     addActivity('Agregó servicio al catálogo', 'Servicio', newService.name);
+
+    fetch('/api/services', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newService),
+    }).catch(e => console.warn('Sync service to SQL info:', e));
   };
 
   const updateService = (id: string, updates: Partial<Service>) => {
     setServices(prev => prev.map(s => (s.id === id ? { ...s, ...updates } : s)));
+    fetch(`/api/services/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(e => console.warn('Sync update service info:', e));
   };
 
   const deleteService = (id: string) => {
     setServices(prev => prev.filter(s => s.id !== id));
+    fetch(`/api/services/${id}`, { method: 'DELETE' }).catch(e => console.warn('Sync delete service info:', e));
   };
 
   // QUOTES & AUTOMATION + Backend Sync

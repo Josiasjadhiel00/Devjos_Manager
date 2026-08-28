@@ -20,6 +20,13 @@ import {
   deleteIncomeFromDb,
   insertExpense,
   deleteExpenseFromDb,
+  insertService,
+  updateServiceInDb,
+  deleteServiceFromDb,
+  insertPayment,
+  updatePaymentInDb,
+  deletePaymentFromDb,
+  syncAllAppData,
   updateSettingsInDb,
 } from "./src/db/queries.ts";
 import { optionalAuth, AuthRequest } from "./src/middleware/auth.ts";
@@ -225,6 +232,79 @@ async function startServer() {
     } catch (error: any) {
       console.error("Error deleting expense from DB:", error);
       res.status(500).json({ error: error.message || "Failed to delete expense" });
+    }
+  });
+
+  // Services Endpoints
+  app.post("/api/services", optionalAuth, async (req: AuthRequest, res) => {
+    try {
+      const newSrv = await insertService(req.body);
+      res.status(201).json(newSrv);
+    } catch (error: any) {
+      console.error("Error saving service in DB:", error);
+      res.status(500).json({ error: error.message || "Failed to save service" });
+    }
+  });
+
+  app.put("/api/services/:id", optionalAuth, async (req: AuthRequest, res) => {
+    try {
+      const updated = await updateServiceInDb(req.params.id, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating service in DB:", error);
+      res.status(500).json({ error: error.message || "Failed to update service" });
+    }
+  });
+
+  app.delete("/api/services/:id", optionalAuth, async (req: AuthRequest, res) => {
+    try {
+      await deleteServiceFromDb(req.params.id);
+      res.json({ success: true, id: req.params.id });
+    } catch (error: any) {
+      console.error("Error deleting service from DB:", error);
+      res.status(500).json({ error: error.message || "Failed to delete service" });
+    }
+  });
+
+  // Payments Endpoints
+  app.post("/api/payments", optionalAuth, async (req: AuthRequest, res) => {
+    try {
+      const newPay = await insertPayment(req.body);
+      res.status(201).json(newPay);
+    } catch (error: any) {
+      console.error("Error saving payment in DB:", error);
+      res.status(500).json({ error: error.message || "Failed to save payment" });
+    }
+  });
+
+  app.put("/api/payments/:id", optionalAuth, async (req: AuthRequest, res) => {
+    try {
+      const updated = await updatePaymentInDb(req.params.id, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating payment in DB:", error);
+      res.status(500).json({ error: error.message || "Failed to update payment" });
+    }
+  });
+
+  app.delete("/api/payments/:id", optionalAuth, async (req: AuthRequest, res) => {
+    try {
+      await deletePaymentFromDb(req.params.id);
+      res.json({ success: true, id: req.params.id });
+    } catch (error: any) {
+      console.error("Error deleting payment from DB:", error);
+      res.status(500).json({ error: error.message || "Failed to delete payment" });
+    }
+  });
+
+  // Bulk Sync Endpoint (Upload all state to PostgreSQL)
+  app.post("/api/sync-all", optionalAuth, async (req: AuthRequest, res) => {
+    try {
+      const result = await syncAllAppData(req.body);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error executing bulk sync in DB:", error);
+      res.status(500).json({ error: error.message || "Failed to bulk sync data" });
     }
   });
 

@@ -393,7 +393,26 @@ export async function getOrCreateUser(uid: string, email: string) {
 // Clients operations
 export async function insertClient(data: any) {
   try {
-    const result = await db.insert(schema.clients).values(data).returning();
+    const payload = {
+      id: data.id || 'cli-' + Date.now(),
+      name: data.name || '',
+      company: data.company || '',
+      phone: data.phone || '',
+      whatsapp: data.whatsapp || '',
+      email: data.email || '',
+      address: data.address || '',
+      instagram: data.instagram || '',
+      facebook: data.facebook || '',
+      website: data.website || '',
+      registeredDate: data.registeredDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'Prospecto',
+      notes: data.notes || '',
+      avatar: data.avatar || '',
+    };
+    const result = await db.insert(schema.clients).values(payload).onConflictDoUpdate({
+      target: schema.clients.id,
+      set: payload,
+    }).returning();
     return result[0];
   } catch (error) {
     console.error('Failed to insert client:', error);
@@ -403,7 +422,9 @@ export async function insertClient(data: any) {
 
 export async function updateClientInDb(id: string, data: any) {
   try {
-    const result = await db.update(schema.clients).set(data).where(eq(schema.clients.id, id)).returning();
+    const payload = { ...data };
+    delete payload.createdAt;
+    const result = await db.update(schema.clients).set(payload).where(eq(schema.clients.id, id)).returning();
     return result[0];
   } catch (error) {
     console.error('Failed to update client:', error);
@@ -423,7 +444,26 @@ export async function deleteClientFromDb(id: string) {
 // Projects operations
 export async function insertProject(data: any) {
   try {
-    const result = await db.insert(schema.projects).values(data).returning();
+    const payload = {
+      id: data.id || 'proj-' + Date.now(),
+      name: data.name || '',
+      clientId: data.clientId || '',
+      category: data.category || 'Desarrollo',
+      description: data.description || '',
+      price: typeof data.price === 'number' ? data.price : (Number(data.price) || 0),
+      startDate: data.startDate || new Date().toISOString().split('T')[0],
+      deliveryDate: data.deliveryDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'Lead',
+      priority: data.priority || 'Media',
+      progress: typeof data.progress === 'number' ? data.progress : (Number(data.progress) || 0),
+      responsibleId: data.responsibleId || '',
+      notes: data.notes || '',
+      paidAmount: typeof data.paidAmount === 'number' ? data.paidAmount : (Number(data.paidAmount) || 0),
+    };
+    const result = await db.insert(schema.projects).values(payload).onConflictDoUpdate({
+      target: schema.projects.id,
+      set: payload,
+    }).returning();
     return result[0];
   } catch (error) {
     console.error('Failed to insert project:', error);
@@ -433,7 +473,9 @@ export async function insertProject(data: any) {
 
 export async function updateProjectInDb(id: string, data: any) {
   try {
-    const result = await db.update(schema.projects).set(data).where(eq(schema.projects.id, id)).returning();
+    const payload = { ...data };
+    delete payload.createdAt;
+    const result = await db.update(schema.projects).set(payload).where(eq(schema.projects.id, id)).returning();
     return result[0];
   } catch (error) {
     console.error('Failed to update project:', error);
@@ -453,7 +495,20 @@ export async function deleteProjectFromDb(id: string) {
 // Tasks operations
 export async function insertTask(data: any) {
   try {
-    const result = await db.insert(schema.tasks).values(data).returning();
+    const payload = {
+      id: data.id || 'task-' + Date.now(),
+      name: data.name || '',
+      description: data.description || '',
+      projectId: data.projectId || '',
+      responsibleId: data.responsibleId || '',
+      priority: data.priority || 'Media',
+      dueDate: data.dueDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'Pendiente',
+    };
+    const result = await db.insert(schema.tasks).values(payload).onConflictDoUpdate({
+      target: schema.tasks.id,
+      set: payload,
+    }).returning();
     return result[0];
   } catch (error) {
     console.error('Failed to insert task:', error);
@@ -463,7 +518,9 @@ export async function insertTask(data: any) {
 
 export async function updateTaskInDb(id: string, data: any) {
   try {
-    const result = await db.update(schema.tasks).set(data).where(eq(schema.tasks.id, id)).returning();
+    const payload = { ...data };
+    delete payload.createdAt;
+    const result = await db.update(schema.tasks).set(payload).where(eq(schema.tasks.id, id)).returning();
     return result[0];
   } catch (error) {
     console.error('Failed to update task:', error);
@@ -484,11 +541,26 @@ export async function deleteTaskFromDb(id: string) {
 export async function insertQuote(data: any) {
   try {
     const payload = {
-      ...data,
-      itemsJson: JSON.stringify(data.items || []),
+      id: data.id || 'quo-' + Date.now(),
+      quoteNumber: data.quoteNumber || 'COT-' + Date.now(),
+      clientId: data.clientId || '',
+      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+      expiryDate: data.expiryDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'Borrador',
+      itemsJson: typeof data.itemsJson === 'string' ? data.itemsJson : JSON.stringify(data.items || []),
+      subtotal: typeof data.subtotal === 'number' ? data.subtotal : (Number(data.subtotal) || 0),
+      discountTotal: typeof data.discountTotal === 'number' ? data.discountTotal : (Number(data.discountTotal) || 0),
+      taxRate: typeof data.taxRate === 'number' ? data.taxRate : (Number(data.taxRate) || 0.18),
+      taxAmount: typeof data.taxAmount === 'number' ? data.taxAmount : (Number(data.taxAmount) || 0),
+      total: typeof data.total === 'number' ? data.total : (Number(data.total) || 0),
+      notes: data.notes || '',
+      terms: data.terms || '',
+      associatedProjectId: data.associatedProjectId || '',
     };
-    delete payload.items;
-    const result = await db.insert(schema.quotes).values(payload).returning();
+    const result = await db.insert(schema.quotes).values(payload).onConflictDoUpdate({
+      target: schema.quotes.id,
+      set: payload,
+    }).returning();
     return {
       ...result[0],
       items: JSON.parse(result[0].itemsJson || '[]'),
@@ -506,6 +578,7 @@ export async function updateQuoteInDb(id: string, data: any) {
       payload.itemsJson = JSON.stringify(data.items);
       delete payload.items;
     }
+    delete payload.createdAt;
     const result = await db.update(schema.quotes).set(payload).where(eq(schema.quotes.id, id)).returning();
     return {
       ...result[0],
@@ -529,7 +602,20 @@ export async function deleteQuoteFromDb(id: string) {
 // Incomes & Expenses operations
 export async function insertIncome(data: any) {
   try {
-    const result = await db.insert(schema.incomes).values(data).returning();
+    const payload = {
+      id: data.id || 'inc-' + Date.now(),
+      clientId: data.clientId || '',
+      projectId: data.projectId || '',
+      amount: typeof data.amount === 'number' ? data.amount : (Number(data.amount) || 0),
+      date: data.date || new Date().toISOString().split('T')[0],
+      method: data.method || 'Transferencia',
+      description: data.description || '',
+      invoiceNumber: data.invoiceNumber || '',
+    };
+    const result = await db.insert(schema.incomes).values(payload).onConflictDoUpdate({
+      target: schema.incomes.id,
+      set: payload,
+    }).returning();
     return result[0];
   } catch (error) {
     console.error('Failed to insert income:', error);
@@ -548,7 +634,19 @@ export async function deleteIncomeFromDb(id: string) {
 
 export async function insertExpense(data: any) {
   try {
-    const result = await db.insert(schema.expenses).values(data).returning();
+    const payload = {
+      id: data.id || 'exp-' + Date.now(),
+      category: data.category || 'Otros',
+      description: data.description || '',
+      amount: typeof data.amount === 'number' ? data.amount : (Number(data.amount) || 0),
+      date: data.date || new Date().toISOString().split('T')[0],
+      method: data.method || 'Transferencia',
+      receiptUrl: data.receiptUrl || '',
+    };
+    const result = await db.insert(schema.expenses).values(payload).onConflictDoUpdate({
+      target: schema.expenses.id,
+      set: payload,
+    }).returning();
     return result[0];
   } catch (error) {
     console.error('Failed to insert expense:', error);
@@ -562,6 +660,162 @@ export async function deleteExpenseFromDb(id: string) {
   } catch (error) {
     console.error('Failed to delete expense:', error);
     throw new Error('Database error deleting expense', { cause: error });
+  }
+}
+
+// Services operations
+export async function insertService(data: any) {
+  try {
+    const payload = {
+      id: data.id || 'srv-' + Date.now(),
+      name: data.name || '',
+      category: data.category || 'Desarrollo',
+      description: data.description || '',
+      basePrice: typeof data.basePrice === 'number' ? data.basePrice : (Number(data.basePrice) || 0),
+      minPrice: typeof data.minPrice === 'number' ? data.minPrice : (Number(data.minPrice) || 0),
+      status: data.status || 'Activo',
+      unit: data.unit || 'Servicio',
+    };
+    const result = await db.insert(schema.services).values(payload).onConflictDoUpdate({
+      target: schema.services.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert service:', error);
+    throw new Error('Database error inserting service', { cause: error });
+  }
+}
+
+export async function updateServiceInDb(id: string, data: any) {
+  try {
+    const payload = { ...data };
+    delete payload.createdAt;
+    const result = await db.update(schema.services).set(payload).where(eq(schema.services.id, id)).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to update service:', error);
+    throw new Error('Database error updating service', { cause: error });
+  }
+}
+
+export async function deleteServiceFromDb(id: string) {
+  try {
+    await db.delete(schema.services).where(eq(schema.services.id, id));
+  } catch (error) {
+    console.error('Failed to delete service:', error);
+    throw new Error('Database error deleting service', { cause: error });
+  }
+}
+
+// Payments operations
+export async function insertPayment(data: any) {
+  try {
+    const payload = {
+      id: data.id || 'pay-' + Date.now(),
+      projectId: data.projectId || '',
+      clientId: data.clientId || '',
+      totalContract: typeof data.totalContract === 'number' ? data.totalContract : (Number(data.totalContract) || 0),
+      advancePayment: typeof data.advancePayment === 'number' ? data.advancePayment : (Number(data.advancePayment) || 0),
+      secondPayment: typeof data.secondPayment === 'number' ? data.secondPayment : (Number(data.secondPayment) || 0),
+      additionalPaymentsJson: typeof data.additionalPaymentsJson === 'string' ? data.additionalPaymentsJson : JSON.stringify(data.additionalPayments || []),
+      totalPaid: typeof data.totalPaid === 'number' ? data.totalPaid : (Number(data.totalPaid) || 0),
+      totalPending: typeof data.totalPending === 'number' ? data.totalPending : (Number(data.totalPending) || 0),
+      status: data.status || 'Pendiente',
+      lastPaymentDate: data.lastPaymentDate || '',
+    };
+    const result = await db.insert(schema.payments).values(payload).onConflictDoUpdate({
+      target: schema.payments.id,
+      set: payload,
+    }).returning();
+    return {
+      ...result[0],
+      additionalPayments: JSON.parse(result[0].additionalPaymentsJson || '[]'),
+    };
+  } catch (error) {
+    console.error('Failed to insert payment:', error);
+    throw new Error('Database error inserting payment', { cause: error });
+  }
+}
+
+export async function updatePaymentInDb(id: string, data: any) {
+  try {
+    const payload: any = { ...data };
+    if (data.additionalPayments) {
+      payload.additionalPaymentsJson = JSON.stringify(data.additionalPayments);
+      delete payload.additionalPayments;
+    }
+    delete payload.createdAt;
+    const result = await db.update(schema.payments).set(payload).where(eq(schema.payments.id, id)).returning();
+    return {
+      ...result[0],
+      additionalPayments: JSON.parse(result[0].additionalPaymentsJson || '[]'),
+    };
+  } catch (error) {
+    console.error('Failed to update payment:', error);
+    throw new Error('Database error updating payment', { cause: error });
+  }
+}
+
+export async function deletePaymentFromDb(id: string) {
+  try {
+    await db.delete(schema.payments).where(eq(schema.payments.id, id));
+  } catch (error) {
+    console.error('Failed to delete payment:', error);
+    throw new Error('Database error deleting payment', { cause: error });
+  }
+}
+
+// Bulk Sync full app data into PostgreSQL
+export async function syncAllAppData(data: any) {
+  try {
+    if (data.settings) {
+      await updateSettingsInDb(data.settings);
+    }
+    if (Array.isArray(data.clients) && data.clients.length > 0) {
+      for (const client of data.clients) {
+        await insertClient(client);
+      }
+    }
+    if (Array.isArray(data.projects) && data.projects.length > 0) {
+      for (const project of data.projects) {
+        await insertProject(project);
+      }
+    }
+    if (Array.isArray(data.tasks) && data.tasks.length > 0) {
+      for (const task of data.tasks) {
+        await insertTask(task);
+      }
+    }
+    if (Array.isArray(data.services) && data.services.length > 0) {
+      for (const service of data.services) {
+        await insertService(service);
+      }
+    }
+    if (Array.isArray(data.quotes) && data.quotes.length > 0) {
+      for (const quote of data.quotes) {
+        await insertQuote(quote);
+      }
+    }
+    if (Array.isArray(data.payments) && data.payments.length > 0) {
+      for (const pay of data.payments) {
+        await insertPayment(pay);
+      }
+    }
+    if (Array.isArray(data.incomes) && data.incomes.length > 0) {
+      for (const inc of data.incomes) {
+        await insertIncome(inc);
+      }
+    }
+    if (Array.isArray(data.expenses) && data.expenses.length > 0) {
+      for (const exp of data.expenses) {
+        await insertExpense(exp);
+      }
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to sync all app data:', error);
+    throw new Error('Database sync all failed', { cause: error });
   }
 }
 

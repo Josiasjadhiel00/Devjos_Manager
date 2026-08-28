@@ -42,8 +42,9 @@ export function subscribeToStudioData(
     const docRef = doc(db, COLLECTION_NAME, STUDIO_DOC_ID);
     return onSnapshot(
       docRef,
+      { includeMetadataChanges: true },
       (snapshot) => {
-        if (snapshot.exists()) {
+        if (snapshot.exists() && !snapshot.metadata.hasPendingWrites) {
           const data = snapshot.data() as StudioSyncPayload;
           onData(data);
         }
