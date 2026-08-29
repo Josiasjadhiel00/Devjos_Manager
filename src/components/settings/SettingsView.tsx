@@ -763,19 +763,19 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Cloud Database Synchronization Status */}
+        {/* Vercel Postgres & PostgreSQL Database Section */}
         <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-cyan-400 font-display flex items-center gap-2">
-              <Server className="w-4 h-4" /> Sincronización en la Nube Multi-Cuenta (Firebase Firestore)
+            <h3 className="text-sm font-bold text-blue-400 font-display flex items-center gap-2">
+              <Database className="w-4 h-4" /> Base de Datos PostgreSQL Principal (Vercel Postgres / Neon)
             </h3>
-            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              Proyecto: estudio-devjos
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-blue-500/10 text-cyan-400 border border-cyan-500/20">
+              Vercel Serverless API
             </span>
           </div>
 
           <p className="text-xs text-slate-300 leading-relaxed">
-            Permite que todos los cambios (clientes registrados, cotizaciones, pagos, proyectos) se sincronicen en tiempo real entre múltiples cuentas de Google, navegadores y computadoras.
+            Cuando la app está desplegada en <strong className="text-white">Vercel</strong> (<span className="text-cyan-300 font-mono">devjos-manager.vercel.app</span>), todas las consultas y registros se almacenan y consultan directamente en tu base de datos PostgreSQL (<span className="text-blue-300 font-mono">DATABASE_URL</span> / <span className="text-blue-300 font-mono">POSTGRES_URL</span>).
           </p>
 
           {/* Current local state stats */}
@@ -785,131 +785,11 @@ export const SettingsView: React.FC = () => {
               {clients.length} clientes
             </span>
             <span className="text-slate-500">|</span>
-            <span className="text-slate-400">Estado de conexión:</span>
-            {isDatabaseConnected && syncStatus === 'connected' ? (
-              <span className="font-semibold text-emerald-400 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Conectado a la nube
-              </span>
-            ) : (
-              <span className="font-semibold text-amber-400 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" /> Modo Local (Base de datos sin activar en Firebase)
-              </span>
-            )}
-          </div>
-
-          {/* Cloud Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={handleTestFirestore}
-              disabled={isTestingFirestore}
-              className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 shadow-md shadow-cyan-600/20"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isTestingFirestore ? 'animate-spin' : ''}`} />
-              {isTestingFirestore ? 'Comprobando...' : 'Diagnosticar Conexión'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleForceUpload}
-              disabled={isUploadingToCloud}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-slate-700 disabled:opacity-50"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              {isUploadingToCloud ? 'Subiendo...' : 'Subir mis datos actuales a Firestore'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleForceDownload}
-              disabled={isUploadingToCloud}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-slate-700 disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Descargar datos desde Firestore
-            </button>
-          </div>
-
-          {firestoreTestResult && (
-            <div
-              className={`p-3.5 rounded-xl text-xs leading-relaxed border ${
-                firestoreTestResult.success
-                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                  : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
-              }`}
-            >
-              <div className="flex items-start gap-2.5">
-                {firestoreTestResult.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <p className="font-semibold">{firestoreTestResult.message}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Quick Setup Instructions Box for Firebase */}
-          {(!isDatabaseConnected || syncStatus !== 'connected') && (
-            <div className="p-4 rounded-xl bg-slate-950/90 border border-amber-500/30 space-y-2.5">
-              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
-                <AlertCircle className="w-4 h-4" />
-                ¿Por qué una cuenta tiene 7 clientes y la otra 8?
-              </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Actualmente tu proyecto de Firebase <strong className="text-white font-mono">estudio-devjos</strong> no tiene creada la base de datos Firestore. Por eso cada navegador guarda sus clientes en su propia memoria local aislada.
-              </p>
-              <div className="text-xs text-slate-300 space-y-1.5 pt-1">
-                <p className="font-bold text-white">Para activar la sincronización en tiempo real en 1 minuto:</p>
-                <ol className="list-decimal list-inside space-y-1 text-slate-400">
-                  <li>
-                    Abre la consola de Firebase:{' '}
-                    <a
-                      href="https://console.firebase.google.com/project/estudio-devjos/firestore"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-cyan-400 underline font-semibold hover:text-cyan-300"
-                    >
-                      https://console.firebase.google.com/project/estudio-devjos/firestore
-                    </a>
-                  </li>
-                  <li>Haz clic en el botón <strong className="text-white">"Crear base de datos"</strong> (puedes elegir ubicación <span className="text-cyan-300 font-mono">nam5 (us-central)</span> y modo de prueba).</li>
-                  <li>
-                    En la pestaña <strong className="text-white">Reglas (Rules)</strong>, asegúrate de permitir lectura/escritura pública temporalmente para tu estudio:
-                    <pre className="mt-1 p-2 rounded-lg bg-slate-900 text-[11px] font-mono text-cyan-300 border border-slate-800 select-all overflow-x-auto">
-{`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}`}
-                    </pre>
-                  </li>
-                  <li>Pulsa <strong className="text-white">Publicar</strong> y luego vuelve aquí y pulsa <strong className="text-cyan-400">"Subir mis datos actuales a Firestore"</strong>.</li>
-                </ol>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Vercel Postgres & PostgreSQL Database Section */}
-        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-blue-400 font-display flex items-center gap-2">
-              <Database className="w-4 h-4" /> Base de Datos PostgreSQL en Vercel (Vercel Postgres / Neon)
-            </h3>
-            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-blue-500/10 text-cyan-400 border border-cyan-500/20">
-              Vercel Serverless API
+            <span className="text-slate-400">Motor de base de datos:</span>
+            <span className="font-semibold text-cyan-300 flex items-center gap-1 font-mono">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" /> Neon PostgreSQL (Vercel)
             </span>
           </div>
-
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Cuando la app está desplegada en <strong className="text-white">Vercel</strong> (<span className="text-cyan-300 font-mono">devjos-manager.vercel.app</span>), todas las consultas y registros se almacenan y consultan directamente a través de las funciones Serverless conectadas a tu base de datos PostgreSQL (<span className="text-blue-300 font-mono">POSTGRES_URL</span> o <span className="text-blue-300 font-mono">DATABASE_URL</span>).
-          </p>
 
           <div className="flex flex-wrap items-center gap-2.5 pt-1">
             <button
@@ -970,11 +850,81 @@ service cloud.firestore {
           )}
 
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 space-y-1">
-            <p className="font-bold text-slate-300">💡 Configuración en el panel de Vercel:</p>
+            <p className="font-bold text-slate-300">💡 Estado de conexión en Vercel:</p>
             <p>
-              En tu proyecto de Vercel (<span className="text-cyan-300 font-mono">Settings &gt; Environment Variables</span>), asegúrate de tener conectada la base de datos Vercel Postgres o Neon (con la variable <span className="text-cyan-300 font-mono">POSTGRES_URL</span> o <span className="text-cyan-300 font-mono">DATABASE_URL</span>).
+              Tu proyecto de Vercel tiene conectada la base de datos Neon PostgreSQL (<span className="text-cyan-300 font-mono">DATABASE_URL</span>). Al pulsar <strong className="text-white">"Subir mis datos actuales a Vercel Postgres"</strong>, todos tus clientes y cotizaciones se guardarán de forma permanente.
             </p>
           </div>
+        </div>
+
+        {/* Optional Firebase Firestore Synchronization Status */}
+        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-300 font-display flex items-center gap-2">
+              <Server className="w-4 h-4 text-slate-400" /> Sincronización Alternativa (Firebase Firestore - Opcional)
+            </h3>
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+              Opcional
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Esta opción es solo si prefieres sincronizar a través de Google Cloud Firestore en lugar de PostgreSQL en Vercel. Si tu base de datos principal es PostgreSQL en Vercel, no necesitas configurar Firebase.
+          </p>
+
+          {/* Cloud Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={handleTestFirestore}
+              disabled={isTestingFirestore}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-slate-700 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isTestingFirestore ? 'animate-spin' : ''}`} />
+              {isTestingFirestore ? 'Comprobando...' : 'Diagnosticar Firestore'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleForceUpload}
+              disabled={isUploadingToCloud}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-slate-700 disabled:opacity-50"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {isUploadingToCloud ? 'Subiendo...' : 'Subir a Firestore'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleForceDownload}
+              disabled={isUploadingToCloud}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-slate-700 disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Descargar de Firestore
+            </button>
+          </div>
+
+          {firestoreTestResult && (
+            <div
+              className={`p-3.5 rounded-xl text-xs leading-relaxed border ${
+                firestoreTestResult.success
+                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                  : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                {firestoreTestResult.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className="font-semibold">{firestoreTestResult.message}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Database Backup & NAS Export Section */}

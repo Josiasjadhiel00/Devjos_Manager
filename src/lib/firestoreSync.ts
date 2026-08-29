@@ -32,37 +32,46 @@ export interface StudioSyncPayload {
 }
 
 let firestoreErrorLogged = false;
+let isFirestoreAvailable: boolean | null = null;
 
 /**
- * Subscribes to real-time changes in Firestore.
+ * Subscribes to real-time changes in Firestore only if explicitly enabled.
  */
 export function subscribeToStudioData(
   onData: (data: StudioSyncPayload) => void,
   onError?: (error: any) => void
 ) {
+  // If Firestore is already known to be unavailable, don't spam listeners
+  if (isFirestoreAvailable === false) {
+    return () => {};
+  }
+
   try {
     const docRef = doc(db, COLLECTION_NAME, STUDIO_DOC_ID);
-    return onSnapshot(
+    const unsubscribe = onSnapshot(
       docRef,
       { includeMetadataChanges: true },
       (snapshot) => {
+        isFirestoreAvailable = true;
         if (snapshot.exists() && !snapshot.metadata.hasPendingWrites) {
           const data = snapshot.data() as StudioSyncPayload;
           onData(data);
         }
       },
       (err) => {
+        isFirestoreAvailable = false;
         if (!firestoreErrorLogged) {
           firestoreErrorLogged = true;
-          console.info('Firestore status: Database not active or running in offline mode.');
+          // Silent log - Firestore not provisioned, app will use PostgreSQL or local state
         }
         if (onError) onError(err);
       }
     );
+    return unsubscribe;
   } catch (err) {
+    isFirestoreAvailable = false;
     if (!firestoreErrorLogged) {
       firestoreErrorLogged = true;
-      console.info('Could not establish Firestore listener.');
     }
     if (onError) onError(err);
     return () => {};
