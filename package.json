@@ -38,4 +38,7 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {}
+  "overrides": {
+    "jose": "^4.15.9"
+  }
 }
