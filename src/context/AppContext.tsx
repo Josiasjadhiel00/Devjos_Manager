@@ -281,6 +281,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
 
+  // Wraps fetch for write operations: throws on non-2xx responses (fetch alone
+  // does NOT reject on HTTP errors, only on network failures), so backend
+  // failures no longer disappear silently and the UI can react to them.
+  const syncToBackend = useCallback(async (url: string, options?: RequestInit) => {
+    const res = await fetch(url, options);
+    if (!res.ok) {
+      let detail = `${res.status} ${res.statusText}`;
+      try {
+        const body = await res.json();
+        if (body?.error) detail = body.error;
+      } catch {
+        // response had no JSON body; keep the status text
+      }
+      throw new Error(detail);
+    }
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Fetch initial data from Cloud SQL backend
   const refreshDataFromDb = useCallback(async () => {
     try {
@@ -288,6 +310,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const res = await fetch('/api/bootstrap');
       if (res.ok) {
         const data = await res.json();
+        if (data.isConnected === false) {
+          // Backend responded but the database itself isn't ready/connected
+          console.warn('Backend API bootstrap: database not connected:', data.message || data.error);
+          setIsDatabaseConnected(false);
+          setSyncStatus('offline');
+          return data;
+        }
         if (data.settings) setSettings(data.settings);
         if (data.clients && data.clients.length > 0) setClients(data.clients);
         if (data.projects && data.projects.length > 0) setProjects(data.projects);
@@ -307,12 +336,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSyncStatus('connected');
         return data;
       } else {
-        setSyncStatus('connected');
+        console.warn('Backend API bootstrap query failed with status:', res.status);
+        setIsDatabaseConnected(false);
+        setSyncStatus('offline');
       }
     } catch (err) {
       console.warn('Backend API bootstrap query info:', err);
-      setIsDatabaseConnected(true);
-      setSyncStatus('connected');
+      setIsDatabaseConnected(false);
+      setSyncStatus('offline');
     }
   }, []);
 
@@ -750,11 +781,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addNotification('Nuevo Cliente Registrado', `${newClient.name} (${newClient.company || 'Particular'})`, 'project');
 
     // Async sync to SQL backend
-    fetch('/api/clients', {
+    syncToBackend('/api/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newClient),
-    }).catch(e => console.warn('Sync client to SQL info:', e));
+    }).catch(e => { console.error('Sync client to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync client to SQL info: No se guardo en la base de datos.', 'system'); });
 
     return newClient;
   };
@@ -766,11 +797,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addActivity('Actualizó información de cliente', 'Cliente', client.name);
     }
 
-    fetch(`/api/clients/${id}`, {
+    syncToBackend(`/api/clients/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
-    }).catch(e => console.warn('Sync update client to SQL info:', e));
+    }).catch(e => { console.error('Sync update client to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync update client to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const deleteClient = (id: string) => {
@@ -780,7 +811,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addActivity('Eliminó cliente', 'Cliente', client.name);
     }
 
-    fetch(`/api/clients/${id}`, { method: 'DELETE' }).catch(e => console.warn('Sync delete client to SQL info:', e));
+    syncToBackend(`/api/clients/${id}`, { method: 'DELETE' }).catch(e => { console.error('Sync delete client to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync delete client to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   // PROJECTS CRUD + Backend Sync
@@ -829,11 +860,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addNotification('Nuevo Proyecto Creado', `Proyecto "${newProj.name}" inicializado.`, 'project');
 
     // Async sync to SQL backend
-    fetch('/api/projects', {
+    syncToBackend('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProj),
-    }).catch(e => console.warn('Sync project to SQL info:', e));
+    }).catch(e => { console.error('Sync project to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync project to SQL info: No se guardo en la base de datos.', 'system'); });
 
     return newProj;
   };
@@ -845,11 +876,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addActivity('Actualizó proyecto', 'Proyecto', proj.name);
     }
 
-    fetch(`/api/projects/${id}`, {
+    syncToBackend(`/api/projects/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
-    }).catch(e => console.warn('Sync update project to SQL info:', e));
+    }).catch(e => { console.error('Sync update project to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync update project to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const updateProjectStatus = (id: string, status: ProjectStatus) => {
@@ -868,11 +899,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addNotification('Estado de Proyecto Actualizado', `"${proj.name}" ahora está en estado "${status}".`, 'project');
     }
 
-    fetch(`/api/projects/${id}`, {
+    syncToBackend(`/api/projects/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, progress: updatedProgress }),
-    }).catch(e => console.warn('Sync update project status to SQL info:', e));
+    }).catch(e => { console.error('Sync update project status to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync update project status to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const deleteProject = (id: string) => {
@@ -884,7 +915,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addActivity('Eliminó proyecto', 'Proyecto', proj.name);
     }
 
-    fetch(`/api/projects/${id}`, { method: 'DELETE' }).catch(e => console.warn('Sync delete project to SQL info:', e));
+    syncToBackend(`/api/projects/${id}`, { method: 'DELETE' }).catch(e => { console.error('Sync delete project to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync delete project to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   // TASKS CRUD + Backend Sync
@@ -896,22 +927,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTasks(prev => [newTask, ...prev]);
     addActivity('Creó nueva tarea', 'Tarea', newTask.name);
 
-    fetch('/api/tasks', {
+    syncToBackend('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTask),
-    }).catch(e => console.warn('Sync task to SQL info:', e));
+    }).catch(e => { console.error('Sync task to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync task to SQL info: No se guardo en la base de datos.', 'system'); });
 
     return newTask;
   };
 
   const updateTask = (id: string, updates: Partial<Task>) => {
     setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...updates } : t)));
-    fetch(`/api/tasks/${id}`, {
+    syncToBackend(`/api/tasks/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
-    }).catch(e => console.warn('Sync update task to SQL info:', e));
+    }).catch(e => { console.error('Sync update task to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync update task to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const toggleTaskStatus = (id: string) => {
@@ -924,16 +955,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return t;
     }));
 
-    fetch(`/api/tasks/${id}`, {
+    syncToBackend(`/api/tasks/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: nextStatus }),
-    }).catch(e => console.warn('Sync task status to SQL info:', e));
+    }).catch(e => { console.error('Sync task status to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync task status to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const deleteTask = (id: string) => {
     setTasks(prev => prev.filter(t => t.id !== id));
-    fetch(`/api/tasks/${id}`, { method: 'DELETE' }).catch(e => console.warn('Sync delete task to SQL info:', e));
+    syncToBackend(`/api/tasks/${id}`, { method: 'DELETE' }).catch(e => { console.error('Sync delete task to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync delete task to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   // SERVICES CRUD
@@ -945,25 +976,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setServices(prev => [newService, ...prev]);
     addActivity('Agregó servicio al catálogo', 'Servicio', newService.name);
 
-    fetch('/api/services', {
+    syncToBackend('/api/services', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newService),
-    }).catch(e => console.warn('Sync service to SQL info:', e));
+    }).catch(e => { console.error('Sync service to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync service to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const updateService = (id: string, updates: Partial<Service>) => {
     setServices(prev => prev.map(s => (s.id === id ? { ...s, ...updates } : s)));
-    fetch(`/api/services/${id}`, {
+    syncToBackend(`/api/services/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
-    }).catch(e => console.warn('Sync update service info:', e));
+    }).catch(e => { console.error('Sync update service info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync update service info: No se guardo en la base de datos.', 'system'); });
   };
 
   const deleteService = (id: string) => {
     setServices(prev => prev.filter(s => s.id !== id));
-    fetch(`/api/services/${id}`, { method: 'DELETE' }).catch(e => console.warn('Sync delete service info:', e));
+    syncToBackend(`/api/services/${id}`, { method: 'DELETE' }).catch(e => { console.error('Sync delete service info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync delete service info: No se guardo en la base de datos.', 'system'); });
   };
 
   // QUOTES & AUTOMATION + Backend Sync
@@ -979,27 +1010,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addActivity('Generó cotización', 'Cotización', newQuote.quoteNumber);
     addNotification('Nueva Cotización Creada', `${newQuote.quoteNumber} para total de $${newQuote.total.toFixed(2)} USD`, 'quote');
 
-    fetch('/api/quotes', {
+    syncToBackend('/api/quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newQuote),
-    }).catch(e => console.warn('Sync quote to SQL info:', e));
+    }).catch(e => { console.error('Sync quote to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync quote to SQL info: No se guardo en la base de datos.', 'system'); });
 
     return newQuote;
   };
 
   const updateQuote = (id: string, updates: Partial<Quote>) => {
     setQuotes(prev => prev.map(q => (q.id === id ? { ...q, ...updates } : q)));
-    fetch(`/api/quotes/${id}`, {
+    syncToBackend(`/api/quotes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
-    }).catch(e => console.warn('Sync update quote to SQL info:', e));
+    }).catch(e => { console.error('Sync update quote to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync update quote to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const deleteQuote = (id: string) => {
     setQuotes(prev => prev.filter(q => q.id !== id));
-    fetch(`/api/quotes/${id}`, { method: 'DELETE' }).catch(e => console.warn('Sync delete quote to SQL info:', e));
+    syncToBackend(`/api/quotes/${id}`, { method: 'DELETE' }).catch(e => { console.error('Sync delete quote to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync delete quote to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const updateQuoteStatus = (id: string, status: QuoteStatus, autoTriggerProject: boolean = true) => {
@@ -1009,11 +1040,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setQuotes(prev => prev.map(q => (q.id === id ? { ...q, status } : q)));
     addActivity(`Actualizó cotización a ${status}`, 'Cotización', targetQuote.quoteNumber);
 
-    fetch(`/api/quotes/${id}`, {
+    syncToBackend(`/api/quotes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
-    }).catch(e => console.warn('Sync quote status to SQL info:', e));
+    }).catch(e => { console.error('Sync quote status to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync quote status to SQL info: No se guardo en la base de datos.', 'system'); });
 
     if (status === 'Aceptada' && autoTriggerProject && settings.automationRules.autoCreateProjectOnQuoteAccept && !targetQuote.associatedProjectId) {
       const client = clients.find(c => c.id === targetQuote.clientId);
@@ -1124,16 +1155,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addActivity(`Registró ingreso de $${data.amount.toFixed(2)}`, 'Finanzas', data.description);
     addNotification('Pago / Ingreso Recibido 💰', `+$${data.amount.toFixed(2)} USD registrado vía ${data.method}`, 'payment');
 
-    fetch('/api/incomes', {
+    syncToBackend('/api/incomes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newInc),
-    }).catch(e => console.warn('Sync income to SQL info:', e));
+    }).catch(e => { console.error('Sync income to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync income to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const deleteIncome = (id: string) => {
     setIncomes(prev => prev.filter(i => i.id !== id));
-    fetch(`/api/incomes/${id}`, { method: 'DELETE' }).catch(e => console.warn('Sync delete income info:', e));
+    syncToBackend(`/api/incomes/${id}`, { method: 'DELETE' }).catch(e => { console.error('Sync delete income info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync delete income info: No se guardo en la base de datos.', 'system'); });
   };
 
   const addExpense = (data: Omit<Expense, 'id'>) => {
@@ -1144,16 +1175,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setExpenses(prev => [newExp, ...prev]);
     addActivity(`Registró gasto de $${data.amount.toFixed(2)}`, 'Finanzas', data.description);
 
-    fetch('/api/expenses', {
+    syncToBackend('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newExp),
-    }).catch(e => console.warn('Sync expense to SQL info:', e));
+    }).catch(e => { console.error('Sync expense to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync expense to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const deleteExpense = (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
-    fetch(`/api/expenses/${id}`, { method: 'DELETE' }).catch(e => console.warn('Sync delete expense info:', e));
+    syncToBackend(`/api/expenses/${id}`, { method: 'DELETE' }).catch(e => { console.error('Sync delete expense info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync delete expense info: No se guardo en la base de datos.', 'system'); });
   };
 
   const recordPayment = (projectId: string, amount: number, method: PaymentMethod, note: string) => {
@@ -1356,11 +1387,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSettings(updated);
     addActivity('Actualizó configuración del estudio', 'Configuración', `Moneda: ${updatedCurrency} (${updatedCurrencySymbol})`);
 
-    fetch('/api/settings', {
+    syncToBackend('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updated),
-    }).catch(e => console.warn('Sync settings to SQL info:', e));
+    }).catch(e => { console.error('Sync settings to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync settings to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
   const resetToDemoData = () => {
