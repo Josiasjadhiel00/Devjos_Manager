@@ -1,7 +1,9 @@
 {
   "version": 2,
   "functions": {
-    "api/index.cjs": {}
+    "api/index.cjs": {
+      "maxDuration": 30
+    }
   },
   "rewrites": [
     {
