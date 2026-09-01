@@ -1429,14 +1429,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setTeam(prev => [...prev, newMember]);
     addActivity('Agregó integrante al equipo', 'Equipo', newMember.name);
+
+    syncToBackend('/api/team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newMember),
+    }).catch(e => { console.error('Sync team member to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se guardo el colaborador en la base de datos.', 'system'); });
   };
 
   const updateTeamMember = (id: string, updates: Partial<TeamMember>) => {
     setTeam(prev => prev.map(m => (m.id === id ? { ...m, ...updates } : m)));
+
+    syncToBackend(`/api/team/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(e => { console.error('Sync update team member to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se actualizo el colaborador en la base de datos.', 'system'); });
   };
 
   const deleteTeamMember = (id: string) => {
     setTeam(prev => prev.filter(m => m.id !== id));
+
+    syncToBackend(`/api/team/${id}`, { method: 'DELETE' })
+      .catch(e => { console.error('Sync delete team member to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino el colaborador de la base de datos.', 'system'); });
   };
 
   // NOTIFICATIONS
