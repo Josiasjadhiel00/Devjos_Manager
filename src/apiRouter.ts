@@ -24,6 +24,9 @@ import {
   insertPayment,
   updatePaymentInDb,
   deletePaymentFromDb,
+  insertTeamMember,
+  updateTeamMemberInDb,
+  deleteTeamMemberFromDb,
   syncAllAppData,
   updateSettingsInDb,
 } from './db/queries.ts';
@@ -372,6 +375,37 @@ apiRouter.delete('/payments/:id', requireAuth, async (req: AuthRequest, res) => 
   } catch (error: any) {
     console.error('Error deleting payment from DB:', error);
     res.status(500).json({ error: error.message || 'Failed to delete payment' });
+  }
+});
+
+// Team Members Endpoints — managing roles/access is Administrador-only
+apiRouter.post('/team', requireAuth, requireRole('Administrador'), async (req: AuthRequest, res) => {
+  try {
+    const newMember = await insertTeamMember(req.body);
+    res.status(201).json(newMember);
+  } catch (error: any) {
+    console.error('Error saving team member in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to save team member' });
+  }
+});
+
+apiRouter.put('/team/:id', requireAuth, requireRole('Administrador'), async (req: AuthRequest, res) => {
+  try {
+    const updated = await updateTeamMemberInDb(req.params.id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating team member in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to update team member' });
+  }
+});
+
+apiRouter.delete('/team/:id', requireAuth, requireRole('Administrador'), async (req: AuthRequest, res) => {
+  try {
+    await deleteTeamMemberFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error: any) {
+    console.error('Error deleting team member from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete team member' });
   }
 });
 
