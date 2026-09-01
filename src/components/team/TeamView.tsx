@@ -21,12 +21,13 @@ import { TeamMember } from '../../types';
 import { ROLE_PERMISSIONS } from '../../utils/permissions';
 
 export const TeamView: React.FC = () => {
-  const { team, addTeamMember, updateTeamMember, deleteTeamMember, tasks, sendPasswordReset, currentUser } = useApp();
+  const { team, addTeamMember, updateTeamMember, deleteTeamMember, tasks, provisionTeamAccess, currentUser } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [memberToEdit, setMemberToEdit] = useState<TeamMember | null>(null);
   const [resetSentId, setResetSentId] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [provisioningId, setProvisioningId] = useState<string | null>(null);
 
   const handleSaveMember = (data: any) => {
     if (memberToEdit) {
@@ -37,15 +38,17 @@ export const TeamView: React.FC = () => {
     }
   };
 
-  const handleSendPasswordReset = async (member: TeamMember) => {
+  const handleGrantAccess = async (member: TeamMember) => {
     setResetError(null);
-    const result = await sendPasswordReset(member.email);
+    setProvisioningId(member.id);
+    const result = await provisionTeamAccess(member.email, member.name, member.role);
+    setProvisioningId(null);
     if (result.success) {
       setResetSentId(member.id);
-      setTimeout(() => setResetSentId(null), 3000);
+      setTimeout(() => setResetSentId(null), 3500);
     } else {
-      setResetError(result.message || 'No se pudo enviar el correo.');
-      setTimeout(() => setResetError(null), 3000);
+      setResetError(result.message || 'No se pudo crear/actualizar la cuenta.');
+      setTimeout(() => setResetError(null), 3500);
     }
   };
 
@@ -160,17 +163,20 @@ export const TeamView: React.FC = () => {
               <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => handleSendPasswordReset(member)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors"
-                    title="Enviarle un correo para que establezca/restablezca su propia contraseña"
+                    onClick={() => handleGrantAccess(member)}
+                    disabled={provisioningId === member.id}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors disabled:opacity-60"
+                    title="Crear/vincular su cuenta real de acceso y enviarle un correo para que ponga su contraseña"
                   >
                     {resetSentId === member.id ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <KeyRound className="w-3.5 h-3.5" />}
                     <span>
-                      {resetSentId === member.id
+                      {provisioningId === member.id
+                        ? 'Creando acceso...'
+                        : resetSentId === member.id
                         ? 'Correo enviado'
                         : resetError && resetSentId === null
                         ? 'Error, reintenta'
-                        : 'Restablecer clave'}
+                        : 'Dar Acceso / Restablecer clave'}
                     </span>
                   </button>
                 </div>

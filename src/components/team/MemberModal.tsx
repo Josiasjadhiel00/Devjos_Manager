@@ -145,13 +145,12 @@ export const MemberModal: React.FC<MemberModalProps> = ({
           </div>
 
           {!memberToEdit && (
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200 flex items-start gap-2">
+            <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-cyan-200 flex items-start gap-2">
               <Key className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <span>
-                Este correo solo queda registrado en el estudio. Para que la persona pueda
-                iniciar sesión de verdad, un Administrador debe crear su cuenta en Firebase
-                Authentication (corriendo el script de configuración) y asignarle este mismo
-                correo y su rol.
+                Después de guardar, ve a su tarjeta en "Equipo & Roles" y presiona
+                <strong> "Dar Acceso"</strong> para crear su cuenta real y enviarle el
+                correo para que ponga su propia contraseña.
               </span>
             </div>
           )}
