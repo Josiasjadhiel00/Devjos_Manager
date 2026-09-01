@@ -30,8 +30,51 @@ import {
 import { createPool, db } from './db/index.ts';
 import { sql } from 'drizzle-orm';
 import { requireAuth, requireRole, AuthRequest } from './middleware/auth.ts';
+import { adminAuth } from './lib/firebase-admin.ts';
+import { randomBytes } from 'crypto';
 
 export const apiRouter = Router();
+
+const VALID_ROLES = ['Administrador', 'Developer', 'Diseñador', 'Fotógrafo', 'Videógrafo', 'Finanzas', 'Contenido', 'Cliente'];
+
+// Crea (o vincula) una cuenta REAL de Firebase Authentication para un
+// colaborador o cliente, y le asigna su rol como custom claim del token.
+// Solo un Administrador ya autenticado puede llamar esto.
+apiRouter.post('/team/provision-access', requireAuth, requireRole('Administrador'), async (req: AuthRequest, res) => {
+  try {
+    const { email, name, role } = req.body || {};
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Falta el email.' });
+    }
+    if (!role || !VALID_ROLES.includes(role)) {
+      return res.status(400).json({ error: `Rol inválido. Debe ser uno de: ${VALID_ROLES.join(', ')}` });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+
+    let userRecord;
+    let created = false;
+    try {
+      userRecord = await adminAuth.getUserByEmail(cleanEmail);
+    } catch (e: any) {
+      if (e?.code !== 'auth/user-not-found') throw e;
+      const tempPassword = randomBytes(9).toString('base64').replace(/[+/=]/g, '').slice(0, 12);
+      userRecord = await adminAuth.createUser({
+        email: cleanEmail,
+        password: tempPassword,
+        displayName: name || cleanEmail,
+        emailVerified: false,
+      });
+      created = true;
+    }
+
+    await adminAuth.setCustomUserClaims(userRecord.uid, { role });
+
+    res.json({ success: true, uid: userRecord.uid, created });
+  } catch (err: any) {
+    console.error('Error provisioning Firebase access:', err);
+    res.status(500).json({ error: err?.message || 'No se pudo crear/actualizar la cuenta de acceso.' });
+  }
+});
 
 // Health & Status check endpoint for PostgreSQL / Vercel Postgres
 apiRouter.get('/health', (req, res) => {
