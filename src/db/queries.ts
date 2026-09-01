@@ -839,3 +839,75 @@ export async function updateSettingsInDb(settings: any) {
     throw new Error('Database error updating settings', { cause: error });
   }
 }
+
+// Look up a team member by email (case-insensitive). Used by the auth
+// middleware to resolve the role behind a verified Firebase ID token.
+export async function getTeamMemberByEmail(email: string) {
+  try {
+    const rows = await db.select().from(schema.teamMembers);
+    const normalized = email.trim().toLowerCase();
+    return rows.find(m => m.email.trim().toLowerCase() === normalized) || null;
+  } catch (error) {
+    console.error('Failed to look up team member by email:', error);
+    return null;
+  }
+}
+
+// Team members operations
+export async function insertTeamMember(data: any) {
+  try {
+    const payload = {
+      id: data.id || 'team-' + Date.now(),
+      name: data.name || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      role: data.role || 'Developer',
+      avatar: data.avatar || '',
+      active: data.active !== false,
+      skillsJson: JSON.stringify(data.skills || []),
+      bio: data.bio || '',
+    };
+    const result = await db.insert(schema.teamMembers).values(payload).onConflictDoUpdate({
+      target: schema.teamMembers.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert team member:', error);
+    throw new Error('Database error inserting team member', { cause: error });
+  }
+}
+
+export async function updateTeamMemberInDb(id: string, updates: any) {
+  try {
+    const payload: any = {};
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.email !== undefined) payload.email = updates.email;
+    if (updates.phone !== undefined) payload.phone = updates.phone;
+    if (updates.role !== undefined) payload.role = updates.role;
+    if (updates.avatar !== undefined) payload.avatar = updates.avatar;
+    if (updates.active !== undefined) payload.active = updates.active;
+    if (updates.skills !== undefined) payload.skillsJson = JSON.stringify(updates.skills);
+    if (updates.bio !== undefined) payload.bio = updates.bio;
+
+    const result = await db.update(schema.teamMembers)
+      .set(payload)
+      .where(eq(schema.teamMembers.id, id))
+      .returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to update team member:', error);
+    throw new Error('Database error updating team member', { cause: error });
+  }
+}
+
+export async function deleteTeamMemberFromDb(id: string) {
+  try {
+    await db.delete(schema.teamMembers).where(eq(schema.teamMembers.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete team member:', error);
+    throw new Error('Database error deleting team member', { cause: error });
+  }
+}
+
