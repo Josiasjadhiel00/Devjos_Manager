@@ -44,3 +44,18 @@ export const requireAuth = async (
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 };
+
+// Must run AFTER requireAuth. Checks the 'role' custom claim baked into the
+// ID token at account-creation time (see scripts/setup-firebase-users.mjs).
+// No extra DB round-trip needed per request.
+export const requireRole = (...allowedRoles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    const role = (req.user as any)?.role;
+    if (!role || !allowedRoles.includes(role)) {
+      return res.status(403).json({
+        error: `Forbidden: requires one of [${allowedRoles.join(', ')}], got '${role || 'none'}'`,
+      });
+    }
+    next();
+  };
+};
