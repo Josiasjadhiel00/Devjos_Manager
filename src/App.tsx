@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
@@ -244,6 +245,7 @@ export default function App() {
   return (
     <AppProvider>
       <MainLayout />
+      <Analytics />
     </AppProvider>
   );
 }
