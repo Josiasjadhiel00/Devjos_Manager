@@ -339,7 +339,6 @@ export interface TeamMember {
   active: boolean;
   skills: string[];
   bio?: string;
-  password?: string;
   lastLogin?: string;
   allowedViews?: string[];
 }
