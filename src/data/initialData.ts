@@ -52,7 +52,6 @@ export const initialTeam: TeamMember[] = [
     active: true,
     skills: ['Fullstack Dev', 'Fotografía', 'Dirección Creativa', 'Estrategia'],
     bio: 'Fundador y Director Ejecutivo en DevJos Studio.',
-    password: 'admin',
     lastLogin: '2026-08-26 10:30',
   },
   {
@@ -65,7 +64,6 @@ export const initialTeam: TeamMember[] = [
     active: true,
     skills: ['React', 'Node.js', 'PostgreSQL', 'APIs'],
     bio: 'Senior Frontend & Backend Engineer.',
-    password: 'dev',
     lastLogin: '2026-08-26 09:15',
   },
   {
@@ -78,7 +76,6 @@ export const initialTeam: TeamMember[] = [
     active: true,
     skills: ['Branding', 'UI/UX', 'Figma', 'Identidad Visual'],
     bio: 'Lead Brand & Visual Designer.',
-    password: 'design',
     lastLogin: '2026-08-25 18:40',
   },
   {
@@ -91,7 +88,6 @@ export const initialTeam: TeamMember[] = [
     active: true,
     skills: ['Lightroom', 'Fotografía Corporativa', 'Retratos', 'Color Grading'],
     bio: 'Especialista en fotografía de producto y retratos corporativos.',
-    password: 'photo',
     lastLogin: '2026-08-26 08:20',
   },
   {
@@ -104,7 +100,6 @@ export const initialTeam: TeamMember[] = [
     active: true,
     skills: ['Premiere Pro', 'After Effects', 'Reels', 'Producción'],
     bio: 'Productora audiovisual y editora de formatos verticales y comerciales.',
-    password: 'video',
     lastLogin: '2026-08-25 16:50',
   },
   {
@@ -117,7 +112,6 @@ export const initialTeam: TeamMember[] = [
     active: true,
     skills: ['Contabilidad', 'Facturación', 'Presupuestos', 'Flujo de Caja'],
     bio: 'Administrador Financiero & Auditoría de Cobros.',
-    password: 'money',
     lastLogin: '2026-08-26 08:00',
   },
   {
@@ -130,7 +124,6 @@ export const initialTeam: TeamMember[] = [
     active: true,
     skills: ['Copywriting', 'Estrategia Social', 'TikTok', 'Instagram'],
     bio: 'Community Manager & Creadora de Contenido Estratégico.',
-    password: 'social',
     lastLogin: '2026-08-26 09:45',
   },
 ];
