@@ -13,9 +13,12 @@ import {
   Layers,
   Sparkles,
   Lock,
+  AlertCircle,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ROLE_PERMISSIONS } from '../../utils/permissions';
+import { updatePassword } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -35,6 +38,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [editBio, setEditBio] = useState(currentMember?.bio || '');
   const [newPassword, setNewPassword] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   if (!isOpen || !currentUser) return null;
 
@@ -47,8 +52,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     setTimeout(() => setIsCopied(false), 2500);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordError(null);
     if (currentUser.id && currentUser.role !== 'Cliente') {
       const updates: any = {
         name: editName,
@@ -56,10 +62,30 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
         avatar: editAvatar,
         bio: editBio,
       };
-      if (newPassword.trim()) {
-        updates.password = newPassword.trim();
-      }
       updateTeamMember(currentUser.id, updates);
+
+      if (newPassword.trim()) {
+        if (newPassword.trim().length < 6) {
+          setPasswordError('La nueva contraseña debe tener al menos 6 caracteres.');
+          return;
+        }
+        setIsSavingPassword(true);
+        try {
+          if (!auth.currentUser) throw new Error('no-session');
+          await updatePassword(auth.currentUser, newPassword.trim());
+          setNewPassword('');
+        } catch (err: any) {
+          if (err?.code === 'auth/requires-recent-login') {
+            setPasswordError('Por seguridad, cierra sesión y vuelve a entrar antes de cambiar tu contraseña.');
+          } else {
+            setPasswordError('No se pudo cambiar la contraseña. Intenta de nuevo.');
+          }
+          setIsSavingPassword(false);
+          return;
+        }
+        setIsSavingPassword(false);
+      }
+
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
     }
@@ -213,14 +239,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:border-cyan-500 placeholder-slate-500"
                   />
                 </div>
+                {passwordError && (
+                  <p className="mt-1.5 text-[11px] text-rose-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                    <span>{passwordError}</span>
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-2">
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-colors shadow-md shadow-cyan-500/20"
+                  disabled={isSavingPassword}
+                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-colors shadow-md shadow-cyan-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Guardar Cambios
+                  {isSavingPassword ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
                 {isSaved && (
                   <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
