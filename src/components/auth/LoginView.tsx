@@ -48,7 +48,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
 
   const selectedMember = team.find(m => m.id === selectedMemberId);
 
-  const handleMemberSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleMemberSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMember) return;
     setErrorMessage('');
@@ -58,7 +60,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
       return;
     }
 
-    const result = login(selectedMember.email, memberPassword);
+    setIsSubmitting(true);
+    const result = await login(selectedMember.email, memberPassword);
+    setIsSubmitting(false);
     if (!result.success) {
       setErrorMessage(result.message || 'Contraseña incorrecta para este perfil.');
     } else {
@@ -66,14 +70,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
     }
   };
 
-  const handleCredentialsLogin = (e: React.FormEvent) => {
+  const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     if (!password.trim()) {
       setErrorMessage('Por favor ingresa tu contraseña.');
       return;
     }
-    const result = login(email, password);
+    setIsSubmitting(true);
+    const result = await login(email, password);
+    setIsSubmitting(false);
     if (!result.success) {
       setErrorMessage(result.message || 'Credenciales inválidas. Revisa el correo y contraseña.');
     } else {
@@ -81,14 +87,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
     }
   };
 
-  const handleClientLogin = (e: React.FormEvent) => {
+  const handleClientLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClientId) return;
     const client = clients.find(c => c.id === selectedClientId);
     if (!client) return;
     
     setErrorMessage('');
-    const result = login(client.email, clientPassword);
+    setIsSubmitting(true);
+    const result = await login(client.email, clientPassword);
+    setIsSubmitting(false);
     if (!result.success) {
       setErrorMessage(result.message || 'Contraseña o clave de acceso incorrecta.');
     } else {
@@ -301,10 +309,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
 
                       <button
                         type="submit"
-                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all active:scale-98 flex items-center justify-center gap-2"
+                        disabled={isSubmitting}
+                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all active:scale-98 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         <Lock className="w-3.5 h-3.5" />
-                        <span>Validar Contraseña & Entrar</span>
+                        <span>{isSubmitting ? 'Validando...' : 'Validar Contraseña & Entrar'}</span>
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </form>
@@ -365,9 +374,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all active:scale-98 flex items-center justify-center gap-2"
+                    disabled={isSubmitting}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all active:scale-98 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <span>Iniciar Sesión en el Estudio</span>
+                    <span>{isSubmitting ? 'Ingresando...' : 'Iniciar Sesión en el Estudio'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </form>
@@ -411,9 +421,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess }) => {
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-500/20 transition-all active:scale-98 flex items-center justify-center gap-2"
+                    disabled={isSubmitting}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-500/20 transition-all active:scale-98 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <span>Entrar como Cliente al Portal</span>
+                    <span>{isSubmitting ? 'Ingresando...' : 'Entrar como Cliente al Portal'}</span>
                     <ExternalLink className="w-4 h-4" />
                   </button>
                 </form>
