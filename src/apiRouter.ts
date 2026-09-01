@@ -29,7 +29,7 @@ import {
 } from './db/queries.ts';
 import { createPool, db } from './db/index.ts';
 import { sql } from 'drizzle-orm';
-import { optionalAuth, AuthRequest } from './middleware/auth.ts';
+import { requireAuth, requireRole, AuthRequest } from './middleware/auth.ts';
 
 export const apiRouter = Router();
 
@@ -44,7 +44,7 @@ apiRouter.get('/health', (req, res) => {
 });
 
 // Diagnostic endpoint to check Vercel Postgres / Neon / Cloud SQL connection
-apiRouter.get('/db-status', async (req, res) => {
+apiRouter.get('/db-status', requireAuth, requireRole('Administrador'), async (req: AuthRequest, res) => {
   try {
     const pool = createPool();
     const result = await pool.query('SELECT current_database(), current_user, NOW() as current_time;');
@@ -72,7 +72,7 @@ apiRouter.get('/db-status', async (req, res) => {
 });
 
 // Initialize / Seed Tables
-apiRouter.get('/init-db', async (req, res) => {
+apiRouter.get('/init-db', requireAuth, requireRole('Administrador'), async (req: AuthRequest, res) => {
   try {
     await ensureDatabaseSeeded();
     res.json({
@@ -85,7 +85,7 @@ apiRouter.get('/init-db', async (req, res) => {
 });
 
 // Fetch full dataset from PostgreSQL backend
-apiRouter.get('/bootstrap', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.get('/bootstrap', requireAuth, async (req: AuthRequest, res) => {
   try {
     const data = await getAllAppData();
     if (data) {
@@ -106,7 +106,7 @@ apiRouter.get('/bootstrap', optionalAuth, async (req: AuthRequest, res) => {
 });
 
 // Clients Endpoints
-apiRouter.post('/clients', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/clients', requireAuth, async (req: AuthRequest, res) => {
   try {
     const newClient = await insertClient(req.body);
     res.status(201).json(newClient);
@@ -116,7 +116,7 @@ apiRouter.post('/clients', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.put('/clients/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.put('/clients/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const updated = await updateClientInDb(req.params.id, req.body);
     res.json(updated);
@@ -126,7 +126,7 @@ apiRouter.put('/clients/:id', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.delete('/clients/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.delete('/clients/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     await deleteClientFromDb(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -137,7 +137,7 @@ apiRouter.delete('/clients/:id', optionalAuth, async (req: AuthRequest, res) => 
 });
 
 // Projects Endpoints
-apiRouter.post('/projects', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/projects', requireAuth, async (req: AuthRequest, res) => {
   try {
     const newProj = await insertProject(req.body);
     res.status(201).json(newProj);
@@ -147,7 +147,7 @@ apiRouter.post('/projects', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.put('/projects/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.put('/projects/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const updated = await updateProjectInDb(req.params.id, req.body);
     res.json(updated);
@@ -157,7 +157,7 @@ apiRouter.put('/projects/:id', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.delete('/projects/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.delete('/projects/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     await deleteProjectFromDb(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -168,7 +168,7 @@ apiRouter.delete('/projects/:id', optionalAuth, async (req: AuthRequest, res) =>
 });
 
 // Tasks Endpoints
-apiRouter.post('/tasks', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/tasks', requireAuth, async (req: AuthRequest, res) => {
   try {
     const newTask = await insertTask(req.body);
     res.status(201).json(newTask);
@@ -178,7 +178,7 @@ apiRouter.post('/tasks', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.put('/tasks/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.put('/tasks/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const updated = await updateTaskInDb(req.params.id, req.body);
     res.json(updated);
@@ -188,7 +188,7 @@ apiRouter.put('/tasks/:id', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.delete('/tasks/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.delete('/tasks/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     await deleteTaskFromDb(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -199,7 +199,7 @@ apiRouter.delete('/tasks/:id', optionalAuth, async (req: AuthRequest, res) => {
 });
 
 // Quotes Endpoints
-apiRouter.post('/quotes', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/quotes', requireAuth, async (req: AuthRequest, res) => {
   try {
     const newQuote = await insertQuote(req.body);
     res.status(201).json(newQuote);
@@ -209,7 +209,7 @@ apiRouter.post('/quotes', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.put('/quotes/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.put('/quotes/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const updated = await updateQuoteInDb(req.params.id, req.body);
     res.json(updated);
@@ -219,7 +219,7 @@ apiRouter.put('/quotes/:id', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.delete('/quotes/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.delete('/quotes/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     await deleteQuoteFromDb(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -230,7 +230,7 @@ apiRouter.delete('/quotes/:id', optionalAuth, async (req: AuthRequest, res) => {
 });
 
 // Incomes & Expenses Endpoints
-apiRouter.post('/incomes', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/incomes', requireAuth, async (req: AuthRequest, res) => {
   try {
     const newInc = await insertIncome(req.body);
     res.status(201).json(newInc);
@@ -240,7 +240,7 @@ apiRouter.post('/incomes', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.delete('/incomes/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.delete('/incomes/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     await deleteIncomeFromDb(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -250,7 +250,7 @@ apiRouter.delete('/incomes/:id', optionalAuth, async (req: AuthRequest, res) => 
   }
 });
 
-apiRouter.post('/expenses', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/expenses', requireAuth, async (req: AuthRequest, res) => {
   try {
     const newExp = await insertExpense(req.body);
     res.status(201).json(newExp);
@@ -260,7 +260,7 @@ apiRouter.post('/expenses', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.delete('/expenses/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.delete('/expenses/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     await deleteExpenseFromDb(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -271,7 +271,7 @@ apiRouter.delete('/expenses/:id', optionalAuth, async (req: AuthRequest, res) =>
 });
 
 // Services Endpoints
-apiRouter.post('/services', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/services', requireAuth, async (req: AuthRequest, res) => {
   try {
     const newSrv = await insertService(req.body);
     res.status(201).json(newSrv);
@@ -281,7 +281,7 @@ apiRouter.post('/services', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.put('/services/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.put('/services/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const updated = await updateServiceInDb(req.params.id, req.body);
     res.json(updated);
@@ -291,7 +291,7 @@ apiRouter.put('/services/:id', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.delete('/services/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.delete('/services/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     await deleteServiceFromDb(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -302,7 +302,7 @@ apiRouter.delete('/services/:id', optionalAuth, async (req: AuthRequest, res) =>
 });
 
 // Payments Endpoints
-apiRouter.post('/payments', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/payments', requireAuth, async (req: AuthRequest, res) => {
   try {
     const newPay = await insertPayment(req.body);
     res.status(201).json(newPay);
@@ -312,7 +312,7 @@ apiRouter.post('/payments', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.put('/payments/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.put('/payments/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const updated = await updatePaymentInDb(req.params.id, req.body);
     res.json(updated);
@@ -322,7 +322,7 @@ apiRouter.put('/payments/:id', optionalAuth, async (req: AuthRequest, res) => {
   }
 });
 
-apiRouter.delete('/payments/:id', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.delete('/payments/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     await deletePaymentFromDb(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -333,7 +333,7 @@ apiRouter.delete('/payments/:id', optionalAuth, async (req: AuthRequest, res) =>
 });
 
 // Bulk Sync Endpoint (Upload all state to PostgreSQL)
-apiRouter.post('/sync-all', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/sync-all', requireAuth, async (req: AuthRequest, res) => {
   try {
     const result = await syncAllAppData(req.body);
     res.json(result);
@@ -347,7 +347,7 @@ apiRouter.post('/sync-all', optionalAuth, async (req: AuthRequest, res) => {
 });
 
 // Settings Endpoint
-apiRouter.post('/settings', optionalAuth, async (req: AuthRequest, res) => {
+apiRouter.post('/settings', requireAuth, async (req: AuthRequest, res) => {
   try {
     await updateSettingsInDb(req.body);
     res.json({ success: true });
