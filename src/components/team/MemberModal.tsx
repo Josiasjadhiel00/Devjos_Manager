@@ -22,7 +22,6 @@ export const MemberModal: React.FC<MemberModalProps> = ({
     email: '',
     phone: '',
     avatar: '',
-    password: '',
     active: true,
     skills: [] as string[],
   });
@@ -35,7 +34,6 @@ export const MemberModal: React.FC<MemberModalProps> = ({
         email: memberToEdit.email || '',
         phone: memberToEdit.phone || '',
         avatar: memberToEdit.avatar || '',
-        password: memberToEdit.password || '',
         active: memberToEdit.active !== false,
         skills: memberToEdit.skills || [],
       });
@@ -46,7 +44,6 @@ export const MemberModal: React.FC<MemberModalProps> = ({
         email: '',
         phone: '',
         avatar: '',
-        password: 'dev',
         active: true,
         skills: ['React', 'TypeScript', 'Tailwind'],
       });
@@ -147,31 +144,27 @@ export const MemberModal: React.FC<MemberModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Contraseña de Acceso</label>
-              <div className="relative">
-                <Key className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder="Clave de ingreso"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-100 focus:outline-none font-mono"
-                />
-              </div>
+          {!memberToEdit && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200 flex items-start gap-2">
+              <Key className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <span>
+                Este correo solo queda registrado en el estudio. Para que la persona pueda
+                iniciar sesión de verdad, un Administrador debe crear su cuenta en Firebase
+                Authentication (corriendo el script de configuración) y asignarle este mismo
+                correo y su rol.
+              </span>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Teléfono / WhatsApp</label>
-              <input
-                type="tel"
-                placeholder="+1 809 555 0199"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Teléfono / WhatsApp</label>
+            <input
+              type="tel"
+              placeholder="+1 809 555 0199"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+            />
           </div>
 
           <div>

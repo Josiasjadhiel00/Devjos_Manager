@@ -11,9 +11,7 @@ import {
   Trash2,
   Shield,
   Clock,
-  Key,
-  Copy,
-  LogIn,
+  KeyRound,
   Fingerprint,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -23,11 +21,12 @@ import { TeamMember } from '../../types';
 import { ROLE_PERMISSIONS } from '../../utils/permissions';
 
 export const TeamView: React.FC = () => {
-  const { team, addTeamMember, updateTeamMember, deleteTeamMember, tasks, loginAsMember, currentUser } = useApp();
+  const { team, addTeamMember, updateTeamMember, deleteTeamMember, tasks, sendPasswordReset, currentUser } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [memberToEdit, setMemberToEdit] = useState<TeamMember | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [resetSentId, setResetSentId] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const handleSaveMember = (data: any) => {
     if (memberToEdit) {
@@ -38,17 +37,16 @@ export const TeamView: React.FC = () => {
     }
   };
 
-  const handleCopyCredentials = (member: TeamMember) => {
-    const text = `🔑 *Acceso al Sistema DevJos Studio*
-👤 *Colaborador:* ${member.name}
-💼 *Rol:* ${member.role}
-📧 *Correo:* ${member.email}
-🔒 *Contraseña:* ${member.password || 'admin'}
-🌐 *Enlace:* ${window.location.origin}`;
-    
-    navigator.clipboard.writeText(text);
-    setCopiedId(member.id);
-    setTimeout(() => setCopiedId(null), 2500);
+  const handleSendPasswordReset = async (member: TeamMember) => {
+    setResetError(null);
+    const result = await sendPasswordReset(member.email);
+    if (result.success) {
+      setResetSentId(member.id);
+      setTimeout(() => setResetSentId(null), 3000);
+    } else {
+      setResetError(result.message || 'No se pudo enviar el correo.');
+      setTimeout(() => setResetError(null), 3000);
+    }
   };
 
   return (
@@ -126,12 +124,6 @@ export const TeamView: React.FC = () => {
                     <Mail className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                     <span className="truncate">{member.email}</span>
                   </p>
-                  {member.password && (
-                    <p className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
-                      <Key className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                      <span>Clave: <strong className="text-slate-200">{member.password}</strong></span>
-                    </p>
-                  )}
                   {member.phone && (
                     <p className="flex items-center gap-2">
                       <Phone className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
@@ -168,21 +160,18 @@ export const TeamView: React.FC = () => {
               <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => handleCopyCredentials(member)}
+                    onClick={() => handleSendPasswordReset(member)}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors"
-                    title="Copiar datos de ingreso para enviar por WhatsApp o Correo"
+                    title="Enviarle un correo para que establezca/restablezca su propia contraseña"
                   >
-                    {copiedId === member.id ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedId === member.id ? '¡Copiado!' : 'Copiar Acceso'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => loginAsMember(member.id)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-[11px] font-semibold border border-cyan-500/30 transition-colors"
-                    title="Ingresar al sistema como este usuario para probar su rol"
-                  >
-                    <LogIn className="w-3.5 h-3.5" />
-                    <span>Entrar como él</span>
+                    {resetSentId === member.id ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <KeyRound className="w-3.5 h-3.5" />}
+                    <span>
+                      {resetSentId === member.id
+                        ? 'Correo enviado'
+                        : resetError && resetSentId === null
+                        ? 'Error, reintenta'
+                        : 'Restablecer clave'}
+                    </span>
                   </button>
                 </div>
 
