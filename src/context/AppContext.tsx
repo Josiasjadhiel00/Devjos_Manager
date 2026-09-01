@@ -46,6 +46,14 @@ import {
   initialActivityLogs,
 } from '../data/initialData';
 import { canAccessView } from '../utils/permissions';
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  type User as FirebaseUser,
+} from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { 
   subscribeToStudioData, 
   saveStudioDataToFirestore, 
@@ -82,10 +90,10 @@ interface AppContextType {
   setIsAuthModalOpen: (open: boolean) => void;
   isUserProfileModalOpen: boolean;
   setIsUserProfileModalOpen: (open: boolean) => void;
-  login: (email: string, password: string) => { success: boolean; message?: string };
-  loginAsMember: (memberId: string) => void;
-  loginAsClient: (clientId: string) => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  sendPasswordReset: (email: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
+  authLoading: boolean;
   hasAccessToView: (view: ActiveView) => boolean;
 
   // State
@@ -242,6 +250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentUserRole, setCurrentUserRole] = useState<RoleType>('Administrador');
   // Always initialize with null so every reload starts at the Login Screen
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
@@ -284,8 +293,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Wraps fetch for write operations: throws on non-2xx responses (fetch alone
   // does NOT reject on HTTP errors, only on network failures), so backend
   // failures no longer disappear silently and the UI can react to them.
+  // Now also attaches the real Firebase ID token, required since the backend
+  // enforces requireAuth on every route.
   const syncToBackend = useCallback(async (url: string, options?: RequestInit) => {
-    const res = await fetch(url, options);
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+    const headers = {
+      ...(options?.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const res = await fetch(url, { ...options, headers });
     if (!res.ok) {
       let detail = `${res.status} ${res.statusText}`;
       try {
@@ -307,7 +323,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshDataFromDb = useCallback(async () => {
     try {
       setSyncStatus('syncing');
-      const res = await fetch('/api/bootstrap');
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const res = await fetch('/api/bootstrap', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.isConnected === false) {
@@ -639,97 +658,128 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [theme]);
 
   // Auth Methods
-  const login = (emailInput: string, passInput: string): { success: boolean; message?: string } => {
+  // Devuelve el ID token real de Firebase del usuario logueado (o null).
+  // Se usa para adjuntar `Authorization: Bearer ...` a cada llamada al backend.
+  const getAuthToken = useCallback(async (): Promise<string | null> => {
+    if (!auth.currentUser) return null;
+    try {
+      return await auth.currentUser.getIdToken();
+    } catch (e) {
+      console.error('No se pudo obtener el token de Firebase:', e);
+      return null;
+    }
+  }, []);
+
+  const buildAuthUserFromFirebase = useCallback(async (fbUser: FirebaseUser): Promise<AuthUser | null> => {
+    const idTokenResult = await fbUser.getIdTokenResult();
+    const role = (idTokenResult.claims.role as RoleType) || null;
+    const cleanEmail = (fbUser.email || '').toLowerCase();
+
+    if (role === 'Cliente') {
+      const client = clients.find(c => c.email.toLowerCase() === cleanEmail);
+      return {
+        id: client?.id || fbUser.uid,
+        name: client?.name || fbUser.displayName || fbUser.email || 'Cliente',
+        email: fbUser.email || '',
+        role: 'Cliente',
+        avatar: client?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        clientId: client?.id,
+      };
+    }
+
+    if (role) {
+      const member = team.find(m => m.email.toLowerCase() === cleanEmail);
+      return {
+        id: member?.id || fbUser.uid,
+        name: member?.name || fbUser.displayName || fbUser.email || 'Usuario',
+        email: fbUser.email || '',
+        role,
+        avatar: member?.avatar || '',
+        phone: member?.phone,
+      };
+    }
+
+    // Cuenta autenticada en Firebase pero sin rol asignado todavía (custom
+    // claim ausente) — no la dejamos entrar hasta que un admin le asigne rol.
+    return null;
+  }, [team, clients]);
+
+  // Mantiene la sesión sincronizada con Firebase Auth (persiste entre
+  // recargas, como cualquier login real).
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (!fbUser) {
+        setCurrentUser(null);
+        setAuthLoading(false);
+        return;
+      }
+      const authUser = await buildAuthUserFromFirebase(fbUser);
+      if (authUser) {
+        setCurrentUser(authUser);
+        setCurrentUserRole(authUser.role);
+        if (authUser.role === 'Cliente') {
+          setPortalClientId(authUser.clientId || authUser.id);
+        }
+      } else {
+        console.warn('Usuario autenticado sin rol asignado — cerrando sesión.');
+        await firebaseSignOut(auth);
+        setCurrentUser(null);
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, [buildAuthUserFromFirebase]);
+
+  const login = async (emailInput: string, passInput: string): Promise<{ success: boolean; message?: string }> => {
     const cleanEmail = emailInput.trim().toLowerCase();
     const cleanPass = passInput.trim();
 
-    // Check team members
-    const member = team.find(m => m.email.toLowerCase() === cleanEmail);
-    if (member) {
-      if (member.password && member.password !== cleanPass) {
-        return { success: false, message: 'Contraseña incorrecta para este usuario.' };
+    try {
+      const credential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
+      const authUser = await buildAuthUserFromFirebase(credential.user);
+      if (!authUser) {
+        await firebaseSignOut(auth);
+        return { success: false, message: 'Tu cuenta no tiene un rol asignado. Contacta al Administrador.' };
       }
-      const authUser: AuthUser = {
-        id: member.id,
-        name: member.name,
-        email: member.email,
-        role: member.role,
-        avatar: member.avatar,
-        phone: member.phone,
-      };
       setCurrentUser(authUser);
-      setCurrentUserRole(member.role);
+      setCurrentUserRole(authUser.role);
       setIsAuthModalOpen(false);
-      addActivity('Inició sesión en el sistema', 'Sesión', member.name);
-      addNotification('Sesión Iniciada', `Bienvenido de vuelta, ${member.name} (${member.role})`, 'system');
+      if (authUser.role === 'Cliente') {
+        setPortalClientId(authUser.clientId || authUser.id);
+        setCurrentView('client-portal');
+        addActivity('Cliente accedió al portal', 'Portal', authUser.name);
+      } else {
+        addActivity('Inició sesión en el sistema', 'Sesión', authUser.name);
+        addNotification('Sesión Iniciada', `Bienvenido de vuelta, ${authUser.name} (${authUser.role})`, 'system');
+      }
+      refreshDataFromDb();
       return { success: true };
-    }
-
-    // Check clients
-    const client = clients.find(c => c.email.toLowerCase() === cleanEmail);
-    if (client) {
-      const clientUser: AuthUser = {
-        id: client.id,
-        name: client.name,
-        email: client.email,
-        role: 'Cliente',
-        avatar: client.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        clientId: client.id,
-      };
-      setCurrentUser(clientUser);
-      setCurrentUserRole('Cliente');
-      setPortalClientId(client.id);
-      setCurrentView('client-portal');
-      setIsAuthModalOpen(false);
-      addActivity('Cliente accedió al portal', 'Portal', client.name);
-      return { success: true };
-    }
-
-    return { success: false, message: 'No se encontró ninguna cuenta registrada con este correo.' };
-  };
-
-  const loginAsMember = (memberId: string) => {
-    const member = team.find(m => m.id === memberId) || team[0];
-    if (member) {
-      const authUser: AuthUser = {
-        id: member.id,
-        name: member.name,
-        email: member.email,
-        role: member.role,
-        avatar: member.avatar,
-        phone: member.phone,
-      };
-      setCurrentUser(authUser);
-      setCurrentUserRole(member.role);
-      setIsAuthModalOpen(false);
-      addActivity('Cambió de usuario activo', 'Sesión', member.name);
-      addNotification('Perfil Activo', `Sesión cambiada a ${member.name} (${member.role})`, 'system');
+    } catch (error: any) {
+      const code = error?.code || '';
+      let message = 'No se pudo iniciar sesión. Intenta de nuevo.';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        message = 'Correo o contraseña incorrectos.';
+      } else if (code === 'auth/too-many-requests') {
+        message = 'Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.';
+      } else if (code === 'auth/invalid-email') {
+        message = 'El correo ingresado no es válido.';
+      }
+      return { success: false, message };
     }
   };
 
-  const loginAsClient = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId) || clients[0];
-    if (client) {
-      const clientUser: AuthUser = {
-        id: client.id,
-        name: client.name,
-        email: client.email,
-        role: 'Cliente',
-        avatar: client.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        clientId: client.id,
-      };
-      setCurrentUser(clientUser);
-      setCurrentUserRole('Cliente');
-      setPortalClientId(client.id);
-      setCurrentView('client-portal');
-      setIsAuthModalOpen(false);
-      addActivity('Acceso como Cliente', 'Portal', client.name);
+  const sendPasswordReset = async (emailInput: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      await sendPasswordResetEmail(auth, emailInput.trim().toLowerCase());
+      return { success: true, message: 'Te enviamos un correo con instrucciones para restablecer tu contraseña.' };
+    } catch (error: any) {
+      return { success: false, message: 'No se pudo enviar el correo de restablecimiento. Verifica el email.' };
     }
   };
 
   const logout = () => {
+    firebaseSignOut(auth).catch(e => console.error('Error al cerrar sesión:', e));
     setCurrentUser(null);
-    localStorage.removeItem('devjos_auth_session');
     setIsAuthModalOpen(true);
   };
 
@@ -1450,9 +1500,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isUserProfileModalOpen,
         setIsUserProfileModalOpen,
         login,
-        loginAsMember,
-        loginAsClient,
+        sendPasswordReset,
         logout,
+        authLoading,
         hasAccessToView,
         currentView,
         setCurrentView,
