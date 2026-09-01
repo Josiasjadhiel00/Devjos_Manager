@@ -92,6 +92,7 @@ interface AppContextType {
   setIsUserProfileModalOpen: (open: boolean) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; message?: string }>;
+  provisionTeamAccess: (email: string, name: string, role: string) => Promise<{ success: boolean; message?: string; created?: boolean }>;
   logout: () => void;
   authLoading: boolean;
   hasAccessToView: (view: ActiveView) => boolean;
@@ -774,6 +775,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: true, message: 'Te enviamos un correo con instrucciones para restablecer tu contraseña.' };
     } catch (error: any) {
       return { success: false, message: 'No se pudo enviar el correo de restablecimiento. Verifica el email.' };
+    }
+  };
+
+  // Solo un Administrador puede llamar esto (el backend lo verifica también).
+  // Crea/vincula la cuenta real de Firebase Auth para esa persona, le asigna
+  // su rol como custom claim, y le manda el correo para que ponga su propia
+  // contraseña.
+  const provisionTeamAccess = async (
+    emailInput: string,
+    name: string,
+    role: string
+  ): Promise<{ success: boolean; message?: string; created?: boolean }> => {
+    try {
+      const cleanEmail = emailInput.trim().toLowerCase();
+      const result = await syncToBackend('/api/team/provision-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, name, role }),
+      });
+      await sendPasswordResetEmail(auth, cleanEmail);
+      return { success: true, created: result?.created };
+    } catch (error: any) {
+      return { success: false, message: error?.message || 'No se pudo crear la cuenta de acceso.' };
     }
   };
 
@@ -1501,6 +1525,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsUserProfileModalOpen,
         login,
         sendPasswordReset,
+        provisionTeamAccess,
         logout,
         authLoading,
         hasAccessToView,
