@@ -2426,6 +2426,56 @@ async function updateSettingsInDb(settings) {
     throw new Error("Database error updating settings", { cause: error });
   }
 }
+async function insertTeamMember(data) {
+  try {
+    const payload = {
+      id: data.id || "team-" + Date.now(),
+      name: data.name || "",
+      email: data.email || "",
+      phone: data.phone || "",
+      role: data.role || "Developer",
+      avatar: data.avatar || "",
+      active: data.active !== false,
+      skillsJson: JSON.stringify(data.skills || []),
+      bio: data.bio || ""
+    };
+    const result = await db.insert(teamMembers).values(payload).onConflictDoUpdate({
+      target: teamMembers.id,
+      set: payload
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error("Failed to insert team member:", error);
+    throw new Error("Database error inserting team member", { cause: error });
+  }
+}
+async function updateTeamMemberInDb(id, updates) {
+  try {
+    const payload = {};
+    if (updates.name !== void 0) payload.name = updates.name;
+    if (updates.email !== void 0) payload.email = updates.email;
+    if (updates.phone !== void 0) payload.phone = updates.phone;
+    if (updates.role !== void 0) payload.role = updates.role;
+    if (updates.avatar !== void 0) payload.avatar = updates.avatar;
+    if (updates.active !== void 0) payload.active = updates.active;
+    if (updates.skills !== void 0) payload.skillsJson = JSON.stringify(updates.skills);
+    if (updates.bio !== void 0) payload.bio = updates.bio;
+    const result = await db.update(teamMembers).set(payload).where(eq(teamMembers.id, id)).returning();
+    return result[0];
+  } catch (error) {
+    console.error("Failed to update team member:", error);
+    throw new Error("Database error updating team member", { cause: error });
+  }
+}
+async function deleteTeamMemberFromDb(id) {
+  try {
+    await db.delete(teamMembers).where(eq(teamMembers.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete team member:", error);
+    throw new Error("Database error deleting team member", { cause: error });
+  }
+}
 
 // src/lib/firebase-admin.ts
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
@@ -2792,6 +2842,33 @@ apiRouter.delete("/payments/:id", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error deleting payment from DB:", error);
     res.status(500).json({ error: error.message || "Failed to delete payment" });
+  }
+});
+apiRouter.post("/team", requireAuth, requireRole("Administrador"), async (req, res) => {
+  try {
+    const newMember = await insertTeamMember(req.body);
+    res.status(201).json(newMember);
+  } catch (error) {
+    console.error("Error saving team member in DB:", error);
+    res.status(500).json({ error: error.message || "Failed to save team member" });
+  }
+});
+apiRouter.put("/team/:id", requireAuth, requireRole("Administrador"), async (req, res) => {
+  try {
+    const updated = await updateTeamMemberInDb(req.params.id, req.body);
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating team member in DB:", error);
+    res.status(500).json({ error: error.message || "Failed to update team member" });
+  }
+});
+apiRouter.delete("/team/:id", requireAuth, requireRole("Administrador"), async (req, res) => {
+  try {
+    await deleteTeamMemberFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error) {
+    console.error("Error deleting team member from DB:", error);
+    res.status(500).json({ error: error.message || "Failed to delete team member" });
   }
 });
 apiRouter.post("/sync-all", requireAuth, async (req, res) => {
