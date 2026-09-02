@@ -911,3 +911,258 @@ export async function deleteTeamMemberFromDb(id: string) {
   }
 }
 
+// Photo Sessions operations
+export async function insertPhotoSession(data: any) {
+  try {
+    const payload = {
+      id: data.id,
+      clientId: data.clientId,
+      projectId: data.projectId || '',
+      title: data.title || '',
+      date: data.date || '',
+      time: data.time || '',
+      location: data.location || '',
+      sessionType: data.sessionType || 'Sesiones',
+      photosTaken: data.photosTaken || 0,
+      photosSelected: data.photosSelected || 0,
+      photosEdited: data.photosEdited || 0,
+      photosDelivered: data.photosDelivered || 0,
+      status: data.status || 'Programada',
+      notes: data.notes || '',
+    };
+    const result = await db.insert(schema.photoSessions).values(payload).onConflictDoUpdate({
+      target: schema.photoSessions.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert photo session:', error);
+    throw new Error('Database error inserting photo session', { cause: error });
+  }
+}
+
+export async function updatePhotoSessionInDb(id: string, updates: any) {
+  try {
+    const payload: any = { ...updates };
+    delete payload.id;
+    const result = await db.update(schema.photoSessions)
+      .set(payload)
+      .where(eq(schema.photoSessions.id, id))
+      .returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to update photo session:', error);
+    throw new Error('Database error updating photo session', { cause: error });
+  }
+}
+
+export async function deletePhotoSessionFromDb(id: string) {
+  try {
+    await db.delete(schema.photoSessions).where(eq(schema.photoSessions.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete photo session:', error);
+    throw new Error('Database error deleting photo session', { cause: error });
+  }
+}
+
+// Galleries operations
+export async function insertGallery(data: any) {
+  try {
+    const payload = {
+      id: data.id,
+      title: data.title || '',
+      clientId: data.clientId,
+      sessionId: data.sessionId || '',
+      projectId: data.projectId || '',
+      coverImage: data.coverImage || '',
+      imagesJson: JSON.stringify(data.images || []),
+      clientShared: data.clientShared || false,
+      shareToken: data.shareToken || ('share-' + Date.now()),
+      description: data.description || '',
+      createdAt: data.createdAt || new Date().toISOString(),
+    };
+    const result = await db.insert(schema.galleries).values(payload).onConflictDoUpdate({
+      target: schema.galleries.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert gallery:', error);
+    throw new Error('Database error inserting gallery', { cause: error });
+  }
+}
+
+export async function updateGalleryInDb(id: string, updates: any) {
+  try {
+    const payload: any = { ...updates };
+    delete payload.id;
+    if (payload.images !== undefined) {
+      payload.imagesJson = JSON.stringify(payload.images);
+      delete payload.images;
+    }
+    const result = await db.update(schema.galleries)
+      .set(payload)
+      .where(eq(schema.galleries.id, id))
+      .returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to update gallery:', error);
+    throw new Error('Database error updating gallery', { cause: error });
+  }
+}
+
+export async function deleteGalleryFromDb(id: string) {
+  try {
+    await db.delete(schema.galleries).where(eq(schema.galleries.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete gallery:', error);
+    throw new Error('Database error deleting gallery', { cause: error });
+  }
+}
+
+// Media Projects operations
+export async function insertMediaProject(data: any) {
+  try {
+    const payload = {
+      id: data.id,
+      title: data.title || '',
+      clientId: data.clientId,
+      projectId: data.projectId || '',
+      format: data.format || 'Reel / Vertical (9:16)',
+      duration: data.duration || '0:30',
+      script: data.script || '',
+      versionsJson: JSON.stringify(data.versions || []),
+      currentVersion: data.currentVersion || 'V1',
+      status: data.status || 'Grabación',
+      notes: data.notes || '',
+    };
+    const result = await db.insert(schema.mediaProjects).values(payload).onConflictDoUpdate({
+      target: schema.mediaProjects.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert media project:', error);
+    throw new Error('Database error inserting media project', { cause: error });
+  }
+}
+
+export async function updateMediaProjectInDb(id: string, updates: any) {
+  try {
+    const payload: any = { ...updates };
+    delete payload.id;
+    if (payload.versions !== undefined) {
+      payload.versionsJson = JSON.stringify(payload.versions);
+      delete payload.versions;
+    }
+    const result = await db.update(schema.mediaProjects)
+      .set(payload)
+      .where(eq(schema.mediaProjects.id, id))
+      .returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to update media project:', error);
+    throw new Error('Database error updating media project', { cause: error });
+  }
+}
+
+export async function deleteMediaProjectFromDb(id: string) {
+  try {
+    await db.delete(schema.mediaProjects).where(eq(schema.mediaProjects.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete media project:', error);
+    throw new Error('Database error deleting media project', { cause: error });
+  }
+}
+
+// Project Files operations
+export async function insertProjectFile(data: any) {
+  try {
+    const payload = {
+      id: data.id,
+      clientId: data.clientId,
+      projectId: data.projectId,
+      folder: data.folder || 'Cotización',
+      name: data.name || '',
+      size: data.size || '0 KB',
+      type: data.type || 'Archivo',
+      uploadDate: data.uploadDate || new Date().toISOString().split('T')[0],
+      url: data.url || '#',
+      nasSynced: data.nasSynced !== false,
+    };
+    const result = await db.insert(schema.projectFiles).values(payload).onConflictDoUpdate({
+      target: schema.projectFiles.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert project file:', error);
+    throw new Error('Database error inserting project file', { cause: error });
+  }
+}
+
+export async function deleteProjectFileFromDb(id: string) {
+  try {
+    await db.delete(schema.projectFiles).where(eq(schema.projectFiles.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete project file:', error);
+    throw new Error('Database error deleting project file', { cause: error });
+  }
+}
+
+// Calendar Events operations
+export async function insertCalendarEvent(data: any) {
+  try {
+    const payload = {
+      id: data.id,
+      title: data.title || '',
+      type: data.type || 'Evento general',
+      startDate: data.startDate || '',
+      endDate: data.endDate || data.startDate || '',
+      time: data.time || '',
+      clientId: data.clientId || '',
+      projectId: data.projectId || '',
+      location: data.location || '',
+      description: data.description || '',
+      isCompleted: data.isCompleted || false,
+    };
+    const result = await db.insert(schema.calendarEvents).values(payload).onConflictDoUpdate({
+      target: schema.calendarEvents.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert calendar event:', error);
+    throw new Error('Database error inserting calendar event', { cause: error });
+  }
+}
+
+export async function updateCalendarEventInDb(id: string, updates: any) {
+  try {
+    const payload: any = { ...updates };
+    delete payload.id;
+    const result = await db.update(schema.calendarEvents)
+      .set(payload)
+      .where(eq(schema.calendarEvents.id, id))
+      .returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to update calendar event:', error);
+    throw new Error('Database error updating calendar event', { cause: error });
+  }
+}
+
+export async function deleteCalendarEventFromDb(id: string) {
+  try {
+    await db.delete(schema.calendarEvents).where(eq(schema.calendarEvents.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete calendar event:', error);
+    throw new Error('Database error deleting calendar event', { cause: error });
+  }
+}
+
