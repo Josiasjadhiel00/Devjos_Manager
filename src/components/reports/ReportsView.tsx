@@ -56,7 +56,7 @@ const projectStatusData = [
 ];
 
 export const ReportsView: React.FC = () => {
-  const { metrics, projects, clients, quotes, incomes, expenses, formatMoney, currencySymbol } = useApp();
+  const { metrics, projects, clients, quotes, incomes, expenses, formatMoney, currencySymbol, settings } = useApp();
   const [timeRange, setTimeRange] = useState<'30d' | '90d' | '1y'>('90d');
 
   const totalIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
@@ -74,9 +74,33 @@ export const ReportsView: React.FC = () => {
       : 0;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="print-document relative space-y-6 animate-in fade-in duration-200">
+      <div className="doc-accent-bar hidden print:block -mx-0" />
+
+      {/* Print-only letterhead — hidden on screen, shown only on paper/PDF */}
+      <div className="hidden print:flex justify-between items-start border-b border-slate-300 pb-4 mb-2">
+        <div>
+          <h1 className="font-display font-extrabold text-xl text-slate-900 tracking-wide">
+            {settings.studioName || 'DEVJOS STUDIO'}
+          </h1>
+          <p className="text-xs text-slate-500">
+            {settings.tagline || 'Software, Multimedia & Photography Studio'}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Reporte</p>
+          <p className="text-sm font-bold text-slate-900">
+            Financiero & Rendimiento Operativo
+          </p>
+          <p className="text-[11px] text-slate-500">
+            Período: {timeRange === '30d' ? 'Últimos 30 días' : timeRange === '90d' ? 'Últimos 3 meses' : 'Último año'}
+          </p>
+          <p className="text-[11px] text-slate-500">Generado: {new Date().toLocaleDateString()}</p>
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-white font-display flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-cyan-400" />
@@ -149,14 +173,14 @@ export const ReportsView: React.FC = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Main Revenue vs Expenses Area Chart */}
-        <div className="lg:col-span-8 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div className="lg:col-span-8 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 print:bg-white print:border-slate-200 print:shadow-none print-avoid-break">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-display font-bold text-sm text-white flex items-center gap-2">
+              <h3 className="font-display font-bold text-sm text-white print:text-slate-900 flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-emerald-400" />
                 Ingresos vs. Gastos Operativos (Semestre)
               </h3>
-              <p className="text-xs text-slate-400">Comparativa mensual de liquidez y balance neto</p>
+              <p className="text-xs text-slate-400 print:text-slate-500">Comparativa mensual de liquidez y balance neto</p>
             </div>
             <div className="flex items-center gap-4 text-xs font-semibold">
               <span className="flex items-center gap-1.5 text-cyan-400">
@@ -196,13 +220,13 @@ export const ReportsView: React.FC = () => {
         </div>
 
         {/* Revenue by Service Category Pie Chart */}
-        <div className="lg:col-span-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col justify-between print:bg-white print:border-slate-200 print:shadow-none print-avoid-break">
           <div>
-            <h3 className="font-display font-bold text-sm text-white flex items-center gap-2">
+            <h3 className="font-display font-bold text-sm text-white print:text-slate-900 flex items-center gap-2">
               <PieChartIcon className="w-4 h-4 text-purple-400" />
               Ingresos por Categoría
             </h3>
-            <p className="text-xs text-slate-400">Distribución porcentual de facturación</p>
+            <p className="text-xs text-slate-400 print:text-slate-500">Distribución porcentual de facturación</p>
           </div>
 
           <div className="h-56 w-full relative flex items-center justify-center">
@@ -247,14 +271,14 @@ export const ReportsView: React.FC = () => {
       </div>
 
       {/* Projects Completion Breakdown Bar Chart */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 print:bg-white print:border-slate-200 print:shadow-none print-avoid-break">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display font-bold text-sm text-white flex items-center gap-2">
+            <h3 className="font-display font-bold text-sm text-white print:text-slate-900 flex items-center gap-2">
               <FolderKanban className="w-4 h-4 text-blue-400" />
               Estado de Entregas & Calidad de Producción
             </h3>
-            <p className="text-xs text-slate-400">Desglose de satisfacción y cumplimiento de hitos</p>
+            <p className="text-xs text-slate-400 print:text-slate-500">Desglose de satisfacción y cumplimiento de hitos</p>
           </div>
         </div>
 
@@ -275,6 +299,12 @@ export const ReportsView: React.FC = () => {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Print-only footer */}
+      <div className="hidden print:flex justify-between items-center pt-4 border-t border-slate-300 text-[10px] text-slate-400">
+        <p>Documento generado por {settings.studioName || 'DevJos Studio'} — uso interno.</p>
+        <p>Página 1 de 1</p>
       </div>
     </div>
   );
