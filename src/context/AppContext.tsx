@@ -1297,15 +1297,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     addActivity('Programó sesión fotográfica', 'Fotografía', newSession.title);
     addNotification('Nueva Sesión Fotográfica Agendada', `${newSession.title} para el ${newSession.date} a las ${newSession.time}`, 'session');
+
+    syncToBackend('/api/photo-sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSession),
+    }).catch(e => { console.error('Sync photo session to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se guardo la sesion en la base de datos.', 'system'); });
+
     return newSession;
   };
 
   const updatePhotoSession = (id: string, updates: Partial<PhotographySession>) => {
     setPhotoSessions(prev => prev.map(s => (s.id === id ? { ...s, ...updates } : s)));
+
+    syncToBackend(`/api/photo-sessions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(e => { console.error('Sync update photo session to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se actualizo la sesion en la base de datos.', 'system'); });
   };
 
   const deletePhotoSession = (id: string) => {
     setPhotoSessions(prev => prev.filter(s => s.id !== id));
+
+    syncToBackend(`/api/photo-sessions/${id}`, { method: 'DELETE' })
+      .catch(e => { console.error('Sync delete photo session to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino la sesion de la base de datos.', 'system'); });
   };
 
   // GALLERIES CRUD
@@ -1318,27 +1334,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setGalleries(prev => [newGal, ...prev]);
     addActivity('Creó nueva galería fotográfica', 'Fotografía', newGal.title);
+
+    syncToBackend('/api/galleries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newGal),
+    }).catch(e => { console.error('Sync gallery to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se guardo la galeria en la base de datos.', 'system'); });
+
     return newGal;
   };
 
   const updateGallery = (id: string, updates: Partial<Gallery>) => {
     setGalleries(prev => prev.map(g => (g.id === id ? { ...g, ...updates } : g)));
+
+    syncToBackend(`/api/galleries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(e => { console.error('Sync update gallery to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se actualizo la galeria en la base de datos.', 'system'); });
   };
 
   const deleteGallery = (id: string) => {
     setGalleries(prev => prev.filter(g => g.id !== id));
+
+    syncToBackend(`/api/galleries/${id}`, { method: 'DELETE' })
+      .catch(e => { console.error('Sync delete gallery to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino la galeria de la base de datos.', 'system'); });
   };
 
   const toggleGalleryImageSelection = (galleryId: string, imageId: string) => {
+    let updatedImages: typeof galleries[number]['images'] | null = null;
     setGalleries(prev => prev.map(g => {
       if (g.id === galleryId) {
-        return {
-          ...g,
-          images: g.images.map(img => (img.id === imageId ? { ...img, selected: !img.selected } : img)),
-        };
+        updatedImages = g.images.map(img => (img.id === imageId ? { ...img, selected: !img.selected } : img));
+        return { ...g, images: updatedImages };
       }
       return g;
     }));
+
+    if (updatedImages) {
+      syncToBackend(`/api/galleries/${galleryId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: updatedImages }),
+      }).catch(e => { console.error('Sync gallery image selection to SQL info:', e); setSyncStatus('offline'); });
+    }
   };
 
   // MULTIMEDIA CRUD
@@ -1350,22 +1389,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setMediaProjects(prev => [newMed, ...prev]);
     addActivity('Creó proyecto audiovisual', 'Multimedia', newMed.title);
+
+    syncToBackend('/api/media-projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newMed),
+    }).catch(e => { console.error('Sync media project to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se guardo el proyecto multimedia en la base de datos.', 'system'); });
+
     return newMed;
   };
 
   const updateMediaProject = (id: string, updates: Partial<MediaProject>) => {
     setMediaProjects(prev => prev.map(m => (m.id === id ? { ...m, ...updates } : m)));
+
+    syncToBackend(`/api/media-projects/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(e => { console.error('Sync update media project to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se actualizo el proyecto multimedia en la base de datos.', 'system'); });
   };
 
   const deleteMediaProject = (id: string) => {
     setMediaProjects(prev => prev.filter(m => m.id !== id));
+
+    syncToBackend(`/api/media-projects/${id}`, { method: 'DELETE' })
+      .catch(e => { console.error('Sync delete media project to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino el proyecto multimedia de la base de datos.', 'system'); });
   };
 
   const addMediaVersion = (mediaId: string, notes: string, fileUrl: string = '#') => {
+    let nextVer: 'V1' | 'V2' | 'V3' | 'Final' | null = null;
+    let updatedVersions: MediaProject['versions'] | null = null;
     setMediaProjects(prev => prev.map(m => {
       if (m.id === mediaId) {
-        const nextVer: 'V1' | 'V2' | 'V3' | 'Final' = 
-          m.currentVersion === 'V1' ? 'V2' : m.currentVersion === 'V2' ? 'V3' : 'Final';
+        nextVer = m.currentVersion === 'V1' ? 'V2' : m.currentVersion === 'V2' ? 'V3' : 'Final';
         const newVersionItem = {
           version: nextVer,
           fileUrl,
@@ -1373,14 +1429,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           notes,
           status: 'En revisión' as const,
         };
+        updatedVersions = [...m.versions, newVersionItem];
         return {
           ...m,
           currentVersion: nextVer,
-          versions: [...m.versions, newVersionItem],
+          versions: updatedVersions,
         };
       }
       return m;
     }));
+
+    if (nextVer && updatedVersions) {
+      syncToBackend(`/api/media-projects/${mediaId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentVersion: nextVer, versions: updatedVersions }),
+      }).catch(e => { console.error('Sync media version to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se guardo la nueva version en la base de datos.', 'system'); });
+    }
   };
 
   // FILES CRUD
@@ -1393,14 +1458,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setFiles(prev => [newFile, ...prev]);
     addActivity('Subió archivo a proyecto', 'Archivos', newFile.name);
+
+    syncToBackend('/api/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newFile),
+    }).catch(e => { console.error('Sync file to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se guardo el archivo en la base de datos.', 'system'); });
   };
 
   const deleteFile = (id: string) => {
     setFiles(prev => prev.filter(f => f.id !== id));
+
+    syncToBackend(`/api/files/${id}`, { method: 'DELETE' })
+      .catch(e => { console.error('Sync delete file to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino el archivo de la base de datos.', 'system'); });
   };
 
   const moveFileFolder = (fileId: string, newFolder: FileFolder) => {
     setFiles(prev => prev.map(f => (f.id === fileId ? { ...f, folder: newFolder } : f)));
+    // La tabla de archivos no tiene ruta PUT (solo crear/borrar); si se
+    // necesita mover de carpeta de forma persistente más adelante, se puede
+    // agregar un endpoint PUT /api/files/:id igual que en las demás tablas.
   };
 
   // CALENDAR CRUD
@@ -1411,14 +1488,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setCalendarEvents(prev => [newEvt, ...prev]);
     addActivity('Agregó evento al calendario', 'Calendario', newEvt.title);
+
+    syncToBackend('/api/calendar-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newEvt),
+    }).catch(e => { console.error('Sync calendar event to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se guardo el evento en la base de datos.', 'system'); });
   };
 
   const updateCalendarEvent = (id: string, updates: Partial<CalendarEvent>) => {
     setCalendarEvents(prev => prev.map(e => (e.id === id ? { ...e, ...updates } : e)));
+
+    syncToBackend(`/api/calendar-events/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(e => { console.error('Sync update calendar event to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se actualizo el evento en la base de datos.', 'system'); });
   };
 
   const deleteCalendarEvent = (id: string) => {
     setCalendarEvents(prev => prev.filter(e => e.id !== id));
+
+    syncToBackend(`/api/calendar-events/${id}`, { method: 'DELETE' })
+      .catch(e => { console.error('Sync delete calendar event to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino el evento de la base de datos.', 'system'); });
   };
 
   // TEAM CRUD
