@@ -27,6 +27,20 @@ import {
   insertTeamMember,
   updateTeamMemberInDb,
   deleteTeamMemberFromDb,
+  insertPhotoSession,
+  updatePhotoSessionInDb,
+  deletePhotoSessionFromDb,
+  insertGallery,
+  updateGalleryInDb,
+  deleteGalleryFromDb,
+  insertMediaProject,
+  updateMediaProjectInDb,
+  deleteMediaProjectFromDb,
+  insertProjectFile,
+  deleteProjectFileFromDb,
+  insertCalendarEvent,
+  updateCalendarEventInDb,
+  deleteCalendarEventFromDb,
   syncAllAppData,
   updateSettingsInDb,
 } from './db/queries.ts';
@@ -406,6 +420,151 @@ apiRouter.delete('/team/:id', requireAuth, requireRole('Administrador'), async (
   } catch (error: any) {
     console.error('Error deleting team member from DB:', error);
     res.status(500).json({ error: error.message || 'Failed to delete team member' });
+  }
+});
+
+// Photo Sessions Endpoints
+apiRouter.post('/photo-sessions', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const newSession = await insertPhotoSession(req.body);
+    res.status(201).json(newSession);
+  } catch (error: any) {
+    console.error('Error saving photo session in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to save photo session' });
+  }
+});
+
+apiRouter.put('/photo-sessions/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const updated = await updatePhotoSessionInDb(req.params.id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating photo session in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to update photo session' });
+  }
+});
+
+apiRouter.delete('/photo-sessions/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await deletePhotoSessionFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error: any) {
+    console.error('Error deleting photo session from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete photo session' });
+  }
+});
+
+// Galleries Endpoints
+apiRouter.post('/galleries', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const newGallery = await insertGallery(req.body);
+    res.status(201).json(newGallery);
+  } catch (error: any) {
+    console.error('Error saving gallery in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to save gallery' });
+  }
+});
+
+apiRouter.put('/galleries/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const updated = await updateGalleryInDb(req.params.id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating gallery in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to update gallery' });
+  }
+});
+
+apiRouter.delete('/galleries/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await deleteGalleryFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error: any) {
+    console.error('Error deleting gallery from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete gallery' });
+  }
+});
+
+// Media Projects Endpoints
+apiRouter.post('/media-projects', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const newMedia = await insertMediaProject(req.body);
+    res.status(201).json(newMedia);
+  } catch (error: any) {
+    console.error('Error saving media project in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to save media project' });
+  }
+});
+
+apiRouter.put('/media-projects/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const updated = await updateMediaProjectInDb(req.params.id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating media project in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to update media project' });
+  }
+});
+
+apiRouter.delete('/media-projects/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await deleteMediaProjectFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error: any) {
+    console.error('Error deleting media project from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete media project' });
+  }
+});
+
+// Project Files Endpoints
+apiRouter.post('/files', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const newFile = await insertProjectFile(req.body);
+    res.status(201).json(newFile);
+  } catch (error: any) {
+    console.error('Error saving file in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to save file' });
+  }
+});
+
+apiRouter.delete('/files/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await deleteProjectFileFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error: any) {
+    console.error('Error deleting file from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete file' });
+  }
+});
+
+// Calendar Events Endpoints
+apiRouter.post('/calendar-events', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const newEvent = await insertCalendarEvent(req.body);
+    res.status(201).json(newEvent);
+  } catch (error: any) {
+    console.error('Error saving calendar event in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to save calendar event' });
+  }
+});
+
+apiRouter.put('/calendar-events/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const updated = await updateCalendarEventInDb(req.params.id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating calendar event in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to update calendar event' });
+  }
+});
+
+apiRouter.delete('/calendar-events/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await deleteCalendarEventFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error: any) {
+    console.error('Error deleting calendar event from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete calendar event' });
   }
 });
 
