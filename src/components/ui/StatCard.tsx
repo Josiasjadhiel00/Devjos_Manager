@@ -48,15 +48,15 @@ export const StatCard: React.FC<StatCardProps> = ({
       onClick={onClick}
       className={`relative p-5 rounded-2xl border transition-all duration-200 ${
         onClick ? 'cursor-pointer hover:scale-[1.01] hover:shadow-lg' : ''
-      } bg-slate-900/80 dark:bg-slate-900/90 backdrop-blur-md border-slate-800 hover:border-slate-700 shadow-sm`}
+      } bg-slate-900/80 dark:bg-slate-900/90 backdrop-blur-md border-slate-800 hover:border-slate-700 shadow-sm print:bg-white print:border-slate-200 print:shadow-none print-avoid-break`}
     >
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 print:text-slate-500">
             {title}
           </p>
           <div className="flex items-baseline space-x-2">
-            <h3 className="text-2xl font-bold text-slate-100 font-display tracking-tight">
+            <h3 className="text-2xl font-bold text-slate-100 print:text-slate-900 font-display tracking-tight">
               {value}
             </h3>
             {trend && (
@@ -72,10 +72,10 @@ export const StatCard: React.FC<StatCardProps> = ({
             )}
           </div>
           {subtitle && (
-            <p className="text-xs text-slate-500 font-medium">{subtitle}</p>
+            <p className="text-xs text-slate-500 print:text-slate-500 font-medium">{subtitle}</p>
           )}
         </div>
-        <div className={`p-3 rounded-xl ${iconBgMap[colorScheme]}`}>
+        <div className={`p-3 rounded-xl no-print ${iconBgMap[colorScheme]}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
