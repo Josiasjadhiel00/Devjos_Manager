@@ -34,14 +34,88 @@
 }
 
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
   }
+
+  html, body {
+    background: white !important;
+  }
+
+  /* Hide everything by default when printing... */
+  body * {
+    visibility: hidden;
+  }
+
+  /* ...except the one document flagged for printing. */
+  .print-document,
+  .print-document * {
+    visibility: visible;
+  }
+
+  .print-document {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: #0f172a !important;
+  }
+
   .no-print {
     display: none !important;
   }
-  .print-only {
-    display: block !important;
+
+  .print-document .print-avoid-break {
+    break-inside: avoid;
+  }
+
+  .print-document table {
+    break-inside: auto;
+  }
+  .print-document tr {
+    break-inside: avoid;
+    break-after: auto;
+  }
+}
+
+/* Shared "official document" look, used by print-ready views
+   (quotes, receipts/invoices, etc.) both on screen and on paper. */
+.print-document {
+  --doc-accent: #0891b2;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.print-document .doc-accent-bar {
+  height: 6px;
+  background: linear-gradient(90deg, var(--devjos-blue), var(--devjos-purple), var(--devjos-cyan));
+}
+
+.print-document .doc-stamp {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  border-width: 4px;
+  border-style: solid;
+  border-radius: 1rem;
+  padding: 0.4rem 1.5rem;
+  opacity: 0.16;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media print {
+  .print-document .doc-stamp {
+    opacity: 0.14;
   }
 }
