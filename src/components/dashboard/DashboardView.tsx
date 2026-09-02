@@ -60,21 +60,65 @@ export const DashboardView: React.FC<{
     currencySymbol,
   } = useApp();
 
-  // Financial timeline data for chart
-  const chartData = [
-    { month: 'Mayo', ingresos: 2100, gastos: 420, ganancia: 1680 },
-    { month: 'Junio', ingresos: 3400, gastos: 610, ganancia: 2790 },
-    { month: 'Julio', ingresos: 4800, gastos: 790, ganancia: 4010 },
-    { month: 'Agosto (Act.)', ingresos: metrics.monthlyRevenue, gastos: metrics.monthlyExpenses, ganancia: metrics.monthlyProfit },
-  ];
+  const MONTH_LABELS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const DASHBOARD_CATEGORY_COLORS: Record<string, string> = {
+    'Desarrollo': '#168dda',
+    'Video': '#7a3fc4',
+    'Multimedia': '#7a3fc4',
+    'Fotografía': '#1bb7e8',
+    'Diseño': '#ec4899',
+    'Branding': '#10b981',
+    'Redes sociales': '#f59e0b',
+    'Otro': '#64748b',
+  };
 
-  // Service categories distribution
-  const categoryStats = [
-    { name: 'Desarrollo Web', value: 45, color: '#168dda' },
-    { name: 'Multimedia / Video', value: 25, color: '#7a3fc4' },
-    { name: 'Fotografía', value: 20, color: '#1bb7e8' },
-    { name: 'Branding & Diseño', value: 10, color: '#10b981' },
-  ];
+  // Financial timeline data for chart — últimos 4 meses reales, calculados
+  // a partir de los ingresos y gastos registrados.
+  const chartData = React.useMemo(() => {
+    const now = new Date();
+    const buckets: { key: string; month: string; ingresos: number; gastos: number; ganancia: number }[] = [];
+    for (let i = 3; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const label = i === 0 ? `${MONTH_LABELS_ES[d.getMonth()]} (Act.)` : MONTH_LABELS_ES[d.getMonth()];
+      buckets.push({ key, month: label, ingresos: 0, gastos: 0, ganancia: 0 });
+    }
+    const byKey = new Map(buckets.map(b => [b.key, b]));
+    incomes.forEach(inc => {
+      const d = new Date(inc.date);
+      if (isNaN(d.getTime())) return;
+      const b = byKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (b) b.ingresos += inc.amount || 0;
+    });
+    expenses.forEach(exp => {
+      const d = new Date(exp.date);
+      if (isNaN(d.getTime())) return;
+      const b = byKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (b) b.gastos += exp.amount || 0;
+    });
+    buckets.forEach(b => { b.ganancia = b.ingresos - b.gastos; });
+    return buckets;
+  }, [incomes, expenses]);
+
+  // Service categories distribution — participación real de ingresos por
+  // categoría de proyecto.
+  const categoryStats = React.useMemo(() => {
+    const totals = new Map<string, number>();
+    incomes.forEach(inc => {
+      const project = inc.projectId ? projects.find(p => p.id === inc.projectId) : undefined;
+      const category = project?.category || 'Otro';
+      totals.set(category, (totals.get(category) || 0) + (inc.amount || 0));
+    });
+    const sum = Array.from(totals.values()).reduce((s, v) => s + v, 0);
+    if (sum === 0) return [];
+    return Array.from(totals.entries())
+      .map(([name, amount]) => ({
+        name,
+        value: Math.round((amount / sum) * 100),
+        color: DASHBOARD_CATEGORY_COLORS[name] || '#64748b',
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [incomes, projects]);
 
   const activeProjectsList = projects.filter(p => !['Completado', 'Cancelado'].includes(p.status)).slice(0, 5);
   const upcomingTasksList = tasks.filter(t => t.status !== 'Completada').slice(0, 5);
@@ -267,32 +311,38 @@ export const DashboardView: React.FC<{
           </div>
 
           <div className="h-44 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryStats}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {categoryStats.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderColor: '#334155',
-                    borderRadius: '0.75rem',
-                    fontSize: '12px',
-                  }}
-                  formatter={(val: any) => [`${val}%`, 'Participación']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {categoryStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryStats}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={75}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {categoryStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      borderColor: '#334155',
+                      borderRadius: '0.75rem',
+                      fontSize: '12px',
+                    }}
+                    formatter={(val: any) => [`${val}%`, 'Participación']}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-xs text-slate-500 text-center px-4">
+                Todavía no hay ingresos vinculados a un proyecto para calcular esta distribución.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-800/80">
