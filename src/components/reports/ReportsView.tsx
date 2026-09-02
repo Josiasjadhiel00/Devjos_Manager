@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -31,29 +31,32 @@ import {
 } from 'recharts';
 import { useApp } from '../../context/AppContext';
 import { StatCard } from '../ui/StatCard';
+import { ProjectCategory, ProjectStatus } from '../../types';
 
-const monthlyFinanceData = [
-  { month: 'Oct', ingresos: 4800, gastos: 1900, beneficio: 2900 },
-  { month: 'Nov', ingresos: 6200, gastos: 2100, beneficio: 4100 },
-  { month: 'Dic', ingresos: 8900, gastos: 2800, beneficio: 6100 },
-  { month: 'Ene', ingresos: 7400, gastos: 2300, beneficio: 5100 },
-  { month: 'Feb', ingresos: 9100, gastos: 2500, beneficio: 6600 },
-  { month: 'Mar', ingresos: 11400, gastos: 3100, beneficio: 8300 },
-];
+const MONTH_LABELS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
-const categoryData = [
-  { name: 'Desarrollo Web', value: 42, color: '#06b6d4' },
-  { name: 'Producción Audiovisual', value: 28, color: '#a855f7' },
-  { name: 'Fotografía Profesional', value: 18, color: '#3b82f6' },
-  { name: 'Diseño & Branding', value: 12, color: '#ec4899' },
-];
+const CATEGORY_COLORS: Record<string, string> = {
+  'Desarrollo': '#06b6d4',
+  'Video': '#a855f7',
+  'Multimedia': '#a855f7',
+  'Fotografía': '#3b82f6',
+  'Diseño': '#ec4899',
+  'Branding': '#ec4899',
+  'Redes sociales': '#f59e0b',
+  'Otro': '#64748b',
+};
 
-const projectStatusData = [
-  { name: 'Completados a tiempo', value: 18, fill: '#10b981' },
-  { name: 'En curso activo', value: 8, fill: '#06b6d4' },
-  { name: 'En revisión de cliente', value: 4, fill: '#8b5cf6' },
-  { name: 'Con ajustes menores', value: 2, fill: '#f59e0b' },
-];
+const STATUS_COLORS: Record<string, string> = {
+  'Completado': '#10b981',
+  'Entregado': '#10b981',
+  'En progreso': '#06b6d4',
+  'En revisión': '#8b5cf6',
+  'Pausado': '#f59e0b',
+  'Aprobado': '#3b82f6',
+  'Cotización': '#64748b',
+  'Lead': '#94a3b8',
+  'Cancelado': '#f43f5e',
+};
 
 export const ReportsView: React.FC = () => {
   const { metrics, projects, clients, quotes, incomes, expenses, formatMoney, currencySymbol, settings } = useApp();
@@ -72,6 +75,104 @@ export const ReportsView: React.FC = () => {
             100
         )
       : 0;
+
+  const nonCancelledProjects = projects.filter(p => p.status !== 'Cancelado');
+  const deliveredProjects = projects.filter(p => p.status === 'Completado' || p.status === 'Entregado');
+  const deliveryEffectivenessRate =
+    nonCancelledProjects.length > 0
+      ? Math.round((deliveredProjects.length / nonCancelledProjects.length) * 100)
+      : 0;
+
+  // Tendencia real: margen de este mes vs. el mes anterior (mismo criterio
+  // que la gráfica de Ingresos vs. Gastos, solo que comparando 2 meses).
+  const marginTrend = useMemo(() => {
+    const now = new Date();
+    const sumFor = (offset: number, field: 'ingresos' | 'gastos') => {
+      const target = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+      const list = field === 'ingresos' ? incomes : expenses;
+      return list.reduce((sum, item) => {
+        const d = new Date(item.date);
+        if (isNaN(d.getTime())) return sum;
+        return d.getFullYear() === target.getFullYear() && d.getMonth() === target.getMonth()
+          ? sum + (item.amount || 0)
+          : sum;
+      }, 0);
+    };
+    const thisMonthIncome = sumFor(0, 'ingresos');
+    const thisMonthExpense = sumFor(0, 'gastos');
+    const lastMonthIncome = sumFor(1, 'ingresos');
+    const lastMonthExpense = sumFor(1, 'gastos');
+    const thisMargin = thisMonthIncome > 0 ? (thisMonthIncome - thisMonthExpense) / thisMonthIncome : 0;
+    const lastMargin = lastMonthIncome > 0 ? (lastMonthIncome - lastMonthExpense) / lastMonthIncome : 0;
+    if (lastMonthIncome === 0) return null;
+    const deltaPoints = Math.round((thisMargin - lastMargin) * 100);
+    return { value: `${deltaPoints >= 0 ? '+' : ''}${deltaPoints} pts`, isPositive: deltaPoints >= 0 };
+  }, [incomes, expenses]);
+
+  // Ingresos vs. Gastos reales, agrupados por mes — la cantidad de meses
+  // depende del filtro de rango seleccionado arriba.
+  const monthlyFinanceData = useMemo(() => {
+    const monthsToShow = timeRange === '30d' ? 1 : timeRange === '90d' ? 3 : 12;
+    const now = new Date();
+    const buckets: { key: string; month: string; ingresos: number; gastos: number; beneficio: number }[] = [];
+
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      buckets.push({ key, month: MONTH_LABELS_ES[d.getMonth()], ingresos: 0, gastos: 0, beneficio: 0 });
+    }
+
+    const bucketByKey = new Map(buckets.map(b => [b.key, b]));
+
+    incomes.forEach(i => {
+      const d = new Date(i.date);
+      if (isNaN(d.getTime())) return;
+      const bucket = bucketByKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (bucket) bucket.ingresos += i.amount || 0;
+    });
+
+    expenses.forEach(e => {
+      const d = new Date(e.date);
+      if (isNaN(d.getTime())) return;
+      const bucket = bucketByKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (bucket) bucket.gastos += e.amount || 0;
+    });
+
+    buckets.forEach(b => { b.beneficio = b.ingresos - b.gastos; });
+    return buckets;
+  }, [incomes, expenses, timeRange]);
+
+  // Ingresos reales por categoría de proyecto (según el proyecto asociado
+  // a cada ingreso registrado).
+  const categoryData = useMemo(() => {
+    const totals = new Map<string, number>();
+    incomes.forEach(i => {
+      const project = i.projectId ? projects.find(p => p.id === i.projectId) : undefined;
+      const category = project?.category || 'Otro';
+      totals.set(category, (totals.get(category) || 0) + (i.amount || 0));
+    });
+    const totalSum = Array.from(totals.values()).reduce((s, v) => s + v, 0);
+    if (totalSum === 0) return [];
+    return Array.from(totals.entries())
+      .map(([name, amount]) => ({
+        name,
+        value: Math.round((amount / totalSum) * 100),
+        amount,
+        color: CATEGORY_COLORS[name] || '#64748b',
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [incomes, projects]);
+
+  // Estado real de todos los proyectos registrados, agrupados por status.
+  const projectStatusData = useMemo(() => {
+    const totals = new Map<string, number>();
+    projects.forEach(p => {
+      totals.set(p.status, (totals.get(p.status) || 0) + 1);
+    });
+    return Array.from(totals.entries())
+      .map(([name, value]) => ({ name, value, fill: STATUS_COLORS[name] || '#64748b' }))
+      .sort((a, b) => b.value - a.value);
+  }, [projects]);
 
   return (
     <div className="print-document relative space-y-6 animate-in fade-in duration-200">
@@ -142,30 +243,29 @@ export const ReportsView: React.FC = () => {
           title="Margen Operativo Neto"
           value={`${marginPercent}%`}
           icon={TrendingUp}
-          trend={{ value: '+6.8%', isPositive: true }}
-          description={`${formatMoney(netProfit || 0)} de utilidad neta`}
+          trend={marginTrend || undefined}
+          subtitle={`${formatMoney(netProfit || 0)} de utilidad neta`}
           colorScheme="emerald"
         />
         <StatCard
           title="Tasa Conversión Cotizaciones"
           value={`${quoteConversionRate}%`}
           icon={Award}
-          trend={{ value: '+12.4%', isPositive: true }}
-          description={`${quotes.filter(q => q.status === 'Aprobada').length} presupuestos ganados`}
+          subtitle={`${quotes.filter(q => q.status === 'Aprobada').length} de ${quotes.length} presupuestos ganados`}
           colorScheme="cyan"
         />
         <StatCard
           title="Efectividad en Entregas"
-          value="94.2%"
+          value={`${deliveryEffectivenessRate}%`}
           icon={CheckCircle2}
-          description="Entregas dentro del cronograma pactado"
+          subtitle={`${deliveredProjects.length} de ${nonCancelledProjects.length} proyectos entregados`}
           colorScheme="purple"
         />
         <StatCard
           title="Valor Promedio por Cliente"
           value={formatMoney(clients.length > 0 ? (Math.round((totalIncome || 0) / clients.length) || 0) : 0)}
           icon={Users}
-          description="Ticket promedio de servicios contratados"
+          subtitle="Ticket promedio de servicios contratados"
           colorScheme="blue"
         />
       </div>
@@ -230,74 +330,87 @@ export const ReportsView: React.FC = () => {
           </div>
 
           <div className="h-56 w-full relative flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '10px', fontSize: '11px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-xl font-bold font-mono text-white">100%</span>
-              <span className="text-[10px] text-slate-400">Servicios</span>
-            </div>
+            {categoryData.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '10px', fontSize: '11px' }}
+                      formatter={(val: any, name: any, props: any) => [formatMoney(props?.payload?.amount || 0), name]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-xl font-bold font-mono text-white print:text-slate-900">100%</span>
+                  <span className="text-[10px] text-slate-400 print:text-slate-500">Servicios</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-slate-500 print:text-slate-400">Todavía no hay ingresos registrados a un proyecto.</p>
+            )}
           </div>
 
-          <div className="space-y-1.5 pt-2 border-t border-slate-800">
+          <div className="space-y-1.5 pt-2 border-t border-slate-800 print:border-slate-200">
             {categoryData.map(item => (
               <div key={item.name} className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-slate-300">
+                <span className="flex items-center gap-2 text-slate-300 print:text-slate-700">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                   {item.name}
                 </span>
-                <span className="font-mono font-bold text-slate-200">{item.value}%</span>
+                <span className="font-mono font-bold text-slate-200 print:text-slate-900">{item.value}%</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Projects Completion Breakdown Bar Chart */}
+      {/* Projects Status Breakdown Bar Chart */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 print:bg-white print:border-slate-200 print:shadow-none print-avoid-break">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-display font-bold text-sm text-white print:text-slate-900 flex items-center gap-2">
               <FolderKanban className="w-4 h-4 text-blue-400" />
-              Estado de Entregas & Calidad de Producción
+              Proyectos por Estado
             </h3>
-            <p className="text-xs text-slate-400 print:text-slate-500">Desglose de satisfacción y cumplimiento de hitos</p>
+            <p className="text-xs text-slate-400 print:text-slate-500">Cuántos proyectos hay en cada etapa ahora mismo</p>
           </div>
         </div>
 
         <div className="h-60 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={projectStatusData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-              <YAxis stroke="#64748b" fontSize={11} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px', color: '#f8fafc' }}
-              />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                {projectStatusData.map((entry, index) => (
-                  <Cell key={`bar-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {projectStatusData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={projectStatusData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
+                <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px', color: '#f8fafc' }}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {projectStatusData.map((entry, index) => (
+                    <Cell key={`bar-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-xs text-slate-500 print:text-slate-400">
+              Todavía no hay proyectos registrados.
+            </div>
+          )}
         </div>
       </div>
 
