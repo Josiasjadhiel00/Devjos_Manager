@@ -102,7 +102,7 @@ export const PaymentsView: React.FC = () => {
           title="Total Contratado"
           value={formatMoney(totalContracted || 0)}
           icon={Receipt}
-          description="Suma total de presupuestos aprobados"
+          subtitle="Suma total de presupuestos aprobados"
           iconColor="text-blue-400"
           iconBg="bg-blue-500/10"
         />
@@ -110,7 +110,7 @@ export const PaymentsView: React.FC = () => {
           title="Cobrado / Recaudado"
           value={formatMoney(totalCollected || 0)}
           icon={TrendingUp}
-          description="Dinero ingresado a cuentas del estudio"
+          subtitle="Dinero ingresado a cuentas del estudio"
           iconColor="text-emerald-400"
           iconBg="bg-emerald-500/10"
         />
@@ -118,7 +118,7 @@ export const PaymentsView: React.FC = () => {
           title="Por Cobrar (Pendiente)"
           value={formatMoney(totalPending || 0)}
           icon={Clock}
-          description="Cuentas por cobrar a clientes"
+          subtitle="Cuentas por cobrar a clientes"
           iconColor="text-amber-400"
           iconBg="bg-amber-500/10"
         />
@@ -126,7 +126,7 @@ export const PaymentsView: React.FC = () => {
           title="Proyectos Liquidados"
           value={`${paidCount} de ${payments.length}`}
           icon={CheckCircle2}
-          description="Proyectos 100% pagados"
+          subtitle="Proyectos 100% pagados"
           iconColor="text-cyan-400"
           iconBg="bg-cyan-500/10"
         />
