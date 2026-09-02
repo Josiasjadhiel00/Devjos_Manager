@@ -2004,7 +2004,7 @@ async function getAllAppData() {
       mediaProjects: mediaProjects2,
       files: filesList || [],
       calendarEvents: calendarEventsList || [],
-      team: team.length > 0 ? team : initialTeam
+      team
     };
   } catch (error) {
     console.error("Database query failed in getAllAppData:", error);
