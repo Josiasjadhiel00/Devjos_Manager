@@ -360,7 +360,7 @@ export async function getAllAppData() {
       mediaProjects,
       files: filesList || [],
       calendarEvents: calendarEventsList || [],
-      team: team.length > 0 ? team : initialTeam,
+      team: team,
     };
   } catch (error) {
     console.error('Database query failed in getAllAppData:', error);
