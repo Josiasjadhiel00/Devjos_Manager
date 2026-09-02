@@ -108,9 +108,9 @@ export const QuickActionModal: React.FC<{
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-xs">
       <div
-        className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="w-full h-full sm:h-auto max-w-xl bg-slate-900 sm:border sm:border-slate-800 rounded-none sm:rounded-2xl shadow-2xl overflow-y-auto max-h-[92vh] sm:max-h-[88vh] animate-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
