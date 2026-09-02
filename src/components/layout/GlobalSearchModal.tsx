@@ -93,7 +93,7 @@ export const GlobalSearchModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+        className="w-full h-full sm:h-auto max-w-2xl bg-slate-900 sm:border sm:border-slate-800 rounded-none sm:rounded-2xl shadow-2xl overflow-y-auto max-h-[92vh] sm:max-h-[88vh] flex flex-col max-h-[80vh]"
         onClick={e => e.stopPropagation()}
       >
         {/* Search Header */}
