@@ -19,6 +19,7 @@ import { useApp } from '../../context/AppContext';
 import { ROLE_PERMISSIONS } from '../../utils/permissions';
 import { updatePassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
+import { AvatarUpload } from '../common/AvatarUpload';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -214,14 +215,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                  URL de Foto de Perfil (Avatar)
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">
+                  Foto de Perfil
                 </label>
-                <input
-                  type="url"
+                <AvatarUpload
                   value={editAvatar}
-                  onChange={(e) => setEditAvatar(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:border-cyan-500 font-mono text-[11px]"
+                  onChange={setEditAvatar}
+                  storagePath={`avatars/team/${currentUser.id}`}
+                  size="md"
                 />
               </div>
 
