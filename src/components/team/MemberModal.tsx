@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Phone, Shield, Briefcase, Lock, Key, CheckCircle2 } from 'lucide-react';
 import { TeamMember, RoleType } from '../../types';
 import { ROLE_PERMISSIONS } from '../../utils/permissions';
+import { AvatarUpload } from '../common/AvatarUpload';
 
 interface MemberModalProps {
   isOpen: boolean;
@@ -167,13 +168,12 @@ export const MemberModal: React.FC<MemberModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">URL de Foto / Avatar</label>
-            <input
-              type="url"
-              placeholder="https://..."
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Foto de Perfil</label>
+            <AvatarUpload
               value={formData.avatar}
-              onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
-              className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none font-mono text-[11px]"
+              onChange={(url) => setFormData({ ...formData, avatar: url })}
+              storagePath={`avatars/team/${memberToEdit?.id || 'new-' + Date.now()}`}
+              size="sm"
             />
           </div>
 
