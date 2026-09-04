@@ -116,7 +116,6 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, siz
           ref={inputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={handleFileSelect}
         />
