@@ -589,6 +589,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  // Revisa cambios hechos desde otro dispositivo/sesión cada 20s mientras
+  // hay sesión iniciada, para que las ediciones hechas en el celular
+  // aparezcan aquí sin tener que recargar la página. Se pausa cuando la
+  // pestaña no está visible, para no gastar peticiones de más.
+  useEffect(() => {
+    if (!currentUser) return;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = setInterval(() => {
+        refreshDataFromDb();
+      }, 20000);
+    };
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (document.hidden) stopPolling();
+      else startPolling();
+    };
+
+    if (!document.hidden) startPolling();
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [currentUser, refreshDataFromDb]);
+
   // Save to local storage & Firestore on changes
   useEffect(() => {
     if (!dataLoaded) return;
