@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Analytics } from '@vercel/analytics/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
@@ -39,10 +38,19 @@ import { ExpenseModal } from './components/finance/ExpenseModal';
 import { PhotoSessionModal } from './components/photography/PhotoSessionModal';
 import { X } from 'lucide-react';
 
+const FullScreenLoader: React.FC<{ message: string }> = ({ message }) => (
+  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-[#07152f] text-slate-100">
+    <div className="w-10 h-10 rounded-full border-2 border-slate-700 border-t-cyan-400 animate-spin" />
+    <p className="text-sm font-semibold text-slate-300 tracking-wide">{message}</p>
+  </div>
+);
+
 const MainLayout: React.FC = () => {
   const {
     currentView,
     currentUser,
+    authLoading,
+    dbLoading,
     hasAccessToView,
     isAuthModalOpen,
     setIsAuthModalOpen,
@@ -68,9 +76,21 @@ const MainLayout: React.FC = () => {
   const [isNewExpenseModalOpen, setIsNewExpenseModalOpen] = useState(false);
   const [isNewSessionModalOpen, setIsNewSessionModalOpen] = useState(false);
 
-  // If no user is authenticated at all, show login view
+  // 1. Mientras se confirma si hay una sesión activa, no mostramos nada
+  // todavía (ni login ni datos viejos).
+  if (authLoading) {
+    return <FullScreenLoader message="Verificando sesión..." />;
+  }
+
+  // 2. Sin sesión, directo al login.
   if (!currentUser) {
     return <LoginView />;
+  }
+
+  // 3. Sesión confirmada, pero esperando los datos reales de la base de
+  // datos — nunca se muestra información vieja o potencialmente borrada.
+  if (dbLoading) {
+    return <FullScreenLoader message="Cargando base de datos..." />;
   }
 
   const renderCurrentView = () => {
@@ -245,7 +265,6 @@ export default function App() {
   return (
     <AppProvider>
       <MainLayout />
-      <Analytics />
     </AppProvider>
   );
 }
