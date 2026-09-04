@@ -95,6 +95,7 @@ interface AppContextType {
   provisionTeamAccess: (email: string, name: string, role: string) => Promise<{ success: boolean; message?: string; created?: boolean }>;
   logout: () => void;
   authLoading: boolean;
+  dbLoading: boolean;
   hasAccessToView: (view: ActiveView) => boolean;
 
   // State
@@ -252,6 +253,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Always initialize with null so every reload starts at the Login Screen
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [dbLoading, setDbLoading] = useState(true);
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
@@ -515,47 +517,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Initial load & Real-time Firestore + PostgreSQL Sync
+  // Initial load — ya no se precarga nada desde la caché local del
+  // navegador (eso era lo que causaba el parpadeo de datos viejos/borrados).
+  // La pantalla se queda en "Cargando base de datos..." hasta que la sesión
+  // de Firebase se confirma y llegan los datos reales de Postgres (ver el
+  // efecto de onAuthStateChanged más abajo, que dispara refreshDataFromDb()).
   useEffect(() => {
-    // 1. Load from local cache for instant initial render
-    let parsedLocal: any = null;
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        parsedLocal = JSON.parse(saved);
-        if (parsedLocal.settings) setSettings(parsedLocal.settings);
-        if (parsedLocal.clients) setClients(parsedLocal.clients);
-        if (parsedLocal.projects) setProjects(parsedLocal.projects);
-        if (parsedLocal.tasks) setTasks(parsedLocal.tasks);
-        if (parsedLocal.services) setServices(parsedLocal.services);
-        if (parsedLocal.quotes) setQuotes(parsedLocal.quotes);
-        if (parsedLocal.incomes) setIncomes(parsedLocal.incomes);
-        if (parsedLocal.expenses) setExpenses(parsedLocal.expenses);
-        if (parsedLocal.payments) setPayments(parsedLocal.payments);
-        if (parsedLocal.photoSessions) setPhotoSessions(parsedLocal.photoSessions);
-        if (parsedLocal.galleries) setGalleries(parsedLocal.galleries);
-        if (parsedLocal.mediaProjects) setMediaProjects(parsedLocal.mediaProjects);
-        if (parsedLocal.files) setFiles(parsedLocal.files);
-        if (parsedLocal.calendarEvents) setCalendarEvents(parsedLocal.calendarEvents);
-        if (parsedLocal.team) setTeam(parsedLocal.team);
-        if (parsedLocal.notifications) setNotifications(parsedLocal.notifications);
-        if (parsedLocal.activityLogs) setActivityLogs(parsedLocal.activityLogs);
-        if (parsedLocal.theme) setTheme(parsedLocal.theme);
-      }
-    } catch (e) {
-      console.error('Error loading local state', e);
-    }
     setDataLoaded(true);
 
-    // 2. Fetch from PostgreSQL server database on mount
-    refreshDataFromDb().then((dbData) => {
-      // If local cache had clients that are not in the DB, push them to PostgreSQL
-      if (parsedLocal && parsedLocal.clients && (!dbData?.clients || parsedLocal.clients.length > dbData.clients.length)) {
-        syncToPostgres(parsedLocal);
-      }
-    });
-
-    // 3. Subscribe to Firestore real-time cloud changes
+    // Firestore en tiempo real (si algún día se activa) — hoy no hace nada
+    // porque esa base no está creada, pero no estorba dejarlo enganchado.
     const unsubscribe = subscribeToStudioData(
       (cloudData: StudioSyncPayload) => {
         if (cloudData.settings) setSettings(cloudData.settings);
@@ -580,7 +551,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       (err) => {
         console.warn('Firestore offline / local fallback mode active:', err);
-        refreshDataFromDb();
       }
     );
 
@@ -746,6 +716,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!fbUser) {
         setCurrentUser(null);
         setAuthLoading(false);
+        setDbLoading(false);
         return;
       }
       const authUser = await buildAuthUserFromFirebase(fbUser);
@@ -755,15 +726,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (authUser.role === 'Cliente') {
           setPortalClientId(authUser.clientId || authUser.id);
         }
+        setAuthLoading(false);
+        // Con la sesión ya confirmada, traemos los datos reales de Postgres
+        // antes de mostrar la app — así nunca se ve un dato viejo/borrado.
+        await refreshDataFromDb();
+        setDbLoading(false);
       } else {
         console.warn('Usuario autenticado sin rol asignado — cerrando sesión.');
         await firebaseSignOut(auth);
         setCurrentUser(null);
+        setAuthLoading(false);
+        setDbLoading(false);
       }
-      setAuthLoading(false);
     });
     return () => unsubscribe();
-  }, [buildAuthUserFromFirebase]);
+  }, [buildAuthUserFromFirebase, refreshDataFromDb]);
 
   const login = async (emailInput: string, passInput: string): Promise<{ success: boolean; message?: string }> => {
     const cleanEmail = emailInput.trim().toLowerCase();
@@ -787,7 +764,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addActivity('Inició sesión en el sistema', 'Sesión', authUser.name);
         addNotification('Sesión Iniciada', `Bienvenido de vuelta, ${authUser.name} (${authUser.role})`, 'system');
       }
-      refreshDataFromDb();
       return { success: true };
     } catch (error: any) {
       const code = error?.code || '';
@@ -1669,6 +1645,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         provisionTeamAccess,
         logout,
         authLoading,
+        dbLoading,
         hasAccessToView,
         currentView,
         setCurrentView,
