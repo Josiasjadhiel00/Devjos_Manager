@@ -147,16 +147,17 @@ export const FilesView: React.FC = () => {
               <h3 className="font-display font-bold text-sm text-white">
                 DevJos NAS & Almacenamiento Centralizado
               </h3>
-              <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />{' '}
-                {settings.nasStatus === 'connected' ? 'NAS Online' : 'Almacenamiento Activo'}
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />{' '}
+                Modo Demo
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Ruta activa:{' '}
+              Ruta de referencia:{' '}
               <span className="font-mono text-cyan-300">
                 {settings.nasRootFolder || '/volume1/DevJos_Studio_Storage'}
               </span>
+              {' '}— los archivos se registran aquí, pero aún no se transfieren a un NAS físico.
             </p>
           </div>
         </div>
