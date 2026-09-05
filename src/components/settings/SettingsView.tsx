@@ -354,6 +354,13 @@ export const SettingsView: React.FC = () => {
             </label>
           </div>
 
+          <div className="px-4 pb-3 -mt-2">
+            <p className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+              ⚠️ Modo demostración: esta pantalla guarda los datos de conexión, pero todavía no transfiere archivos a
+              ningún NAS real. Tus archivos siguen respaldados únicamente en la base de datos del sistema.
+            </p>
+          </div>
+
           {formData.nasStorageEnabled && (
             <div className="space-y-4">
               {/* Presets */}
