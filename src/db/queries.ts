@@ -27,8 +27,15 @@ export async function ensureDatabaseSeeded() {
     if (pool) {
       await ensurePostgresTablesExist(pool);
     }
-    const existingClients = await db.select().from(schema.clients).limit(1);
-    if (existingClients.length === 0) {
+    // OJO: antes esto revisaba "¿la tabla de clientes está vacía?" para
+    // decidir si sembrar datos de ejemplo — eso causaba que, si alguien
+    // borraba TODOS sus clientes de verdad, el sistema lo confundiera con
+    // "base de datos nueva" y repusiera los datos de muestra en cada
+    // petición a /api/bootstrap. Ahora se usa un marcador que solo existe
+    // una vez, la primerísima vez que se usa esta base de datos.
+    const existingSettings = await db.select().from(schema.studioSettings)
+      .where(eq(schema.studioSettings.id, 'default')).limit(1);
+    if (existingSettings.length === 0) {
       console.log('🌱 Seeding initial DevJos Studio data to Cloud SQL PostgreSQL...');
       
       // Seed Settings
