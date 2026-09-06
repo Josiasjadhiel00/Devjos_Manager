@@ -25,6 +25,8 @@ import {
   Share2,
   RefreshCw,
   AlertCircle,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NasBrandType } from '../../types';
@@ -46,6 +48,8 @@ export const SettingsView: React.FC = () => {
     syncStatus,
     isDatabaseConnected,
     clients,
+    theme,
+    toggleTheme,
   } = useApp();
 
   const [formData, setFormData] = useState({ ...settings });
@@ -319,6 +323,33 @@ export const SettingsView: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* APARIENCIA — tema claro/oscuro, solo aquí, en ningún otro lado de la app */}
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-5 sm:p-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-slate-800 text-amber-400 border border-slate-700">
+              {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Apariencia</h3>
+              <p className="text-xs text-slate-400">Modo {theme === 'dark' ? 'Oscuro' : 'Claro'}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`relative w-11 h-6 rounded-full transition-colors ${theme === 'dark' ? 'bg-slate-700' : 'bg-cyan-500'}`}
+            aria-label="Cambiar tema"
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform flex items-center justify-center ${
+                theme === 'dark' ? 'translate-x-0' : 'translate-x-5'
+              }`}
+            >
+              {theme === 'dark' ? <Moon className="w-3 h-3 text-slate-700" /> : <Sun className="w-3 h-3 text-amber-500" />}
+            </span>
+          </button>
+        </div>
+
         {/* NAS CONFIGURATION (TOP PRIORITY REQUESTED BY USER) */}
         <div className="bg-slate-900/80 backdrop-blur-md border border-cyan-500/30 rounded-2xl p-5 sm:p-6 space-y-5 shadow-lg shadow-cyan-950/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
