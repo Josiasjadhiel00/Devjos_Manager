@@ -1712,8 +1712,8 @@ async function ensureDatabaseSeeded() {
     if (pool2) {
       await ensurePostgresTablesExist(pool2);
     }
-    const existingClients = await db.select().from(clients).limit(1);
-    if (existingClients.length === 0) {
+    const existingSettings = await db.select().from(studioSettings).where(eq(studioSettings.id, "default")).limit(1);
+    if (existingSettings.length === 0) {
       console.log("\u{1F331} Seeding initial DevJos Studio data to Cloud SQL PostgreSQL...");
       await db.insert(studioSettings).values({
         id: "default",
@@ -2364,8 +2364,8 @@ async function syncAllAppData(data) {
       await updateSettingsInDb(data.settings);
     }
     if (Array.isArray(data.clients) && data.clients.length > 0) {
-      for (const client of data.clients) {
-        await insertClient(client);
+      for (const client2 of data.clients) {
+        await insertClient(client2);
       }
     }
     if (Array.isArray(data.projects) && data.projects.length > 0) {
@@ -2770,6 +2770,20 @@ var requireRole = (...allowedRoles) => {
     next();
   };
 };
+
+// src/lib/gemini.ts
+import { GoogleGenAI } from "@google/genai";
+var client = null;
+function getGeminiClient() {
+  if (!client) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY no est\xE1 configurada en las variables de entorno.");
+    }
+    client = new GoogleGenAI({ apiKey });
+  }
+  return client;
+}
 
 // src/apiRouter.ts
 import { randomBytes } from "crypto";
@@ -3219,6 +3233,87 @@ apiRouter.delete("/calendar-events/:id", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error deleting calendar event from DB:", error);
     res.status(500).json({ error: error.message || "Failed to delete calendar event" });
+  }
+});
+apiRouter.post("/assistant/chat", requireAuth, async (req, res) => {
+  try {
+    const role = req.user?.role;
+    const email = req.user?.email || "";
+    if (!role || role === "Cliente") {
+      return res.status(403).json({ error: "Este asistente es solo para el equipo del estudio." });
+    }
+    const { message, history } = req.body || {};
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "Falta el mensaje." });
+    }
+    const teamList = await db.select().from(teamMembers).catch(() => []);
+    const me = teamList.find((m) => m.email.toLowerCase() === email.toLowerCase());
+    const myName = me?.name || email;
+    const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const thisMonthKey = today.slice(0, 7);
+    const contextLines = [
+      `Fecha de hoy: ${today}`,
+      `Quien pregunta: ${myName} (rol: ${role})`
+    ];
+    if (me) {
+      const allTasks = await db.select().from(tasks).catch(() => []);
+      const myTasks = allTasks.filter((t) => t.responsibleId === me.id && t.status !== "Completada").sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || "")).slice(0, 10);
+      if (myTasks.length > 0) {
+        contextLines.push(
+          `Tareas pendientes de ${myName} (${myTasks.length}):`,
+          ...myTasks.map((t) => `- "${t.name}" | vence: ${t.dueDate} | prioridad: ${t.priority} | estado: ${t.status}`)
+        );
+      } else {
+        contextLines.push(`${myName} no tiene tareas pendientes asignadas.`);
+      }
+    }
+    if (role === "Administrador" || role === "Finanzas") {
+      const [allIncomes, allExpenses, allPayments, allProjects] = await Promise.all([
+        db.select().from(incomes).catch(() => []),
+        db.select().from(expenses).catch(() => []),
+        db.select().from(payments).catch(() => []),
+        db.select().from(projects).catch(() => [])
+      ]);
+      const monthIncome = allIncomes.filter((i) => (i.date || "").startsWith(thisMonthKey)).reduce((s, i) => s + (i.amount || 0), 0);
+      const monthExpense = allExpenses.filter((e) => (e.date || "").startsWith(thisMonthKey)).reduce((s, e) => s + (e.amount || 0), 0);
+      const pendingPayments = allPayments.filter((p) => (p.totalPending || 0) > 0);
+      const pendingTotal = pendingPayments.reduce((s, p) => s + (p.totalPending || 0), 0);
+      const activeProjects = allProjects.filter((p) => p.status !== "Completado" && p.status !== "Cancelado");
+      contextLines.push(
+        `Ingresos de este mes (${thisMonthKey}): ${monthIncome}`,
+        `Gastos de este mes (${thisMonthKey}): ${monthExpense}`,
+        `Utilidad de este mes: ${monthIncome - monthExpense}`,
+        `Pagos pendientes de cobro: ${pendingPayments.length} proyectos, total pendiente: ${pendingTotal}`,
+        `Proyectos activos: ${activeProjects.length}`
+      );
+    }
+    if (role === "Administrador") {
+      contextLines.push(`Colaboradores activos en el equipo: ${teamList.filter((m) => m.active).length}`);
+    }
+    const systemInstruction = [
+      `Eres el asistente interno de DevJos Studio, un estudio de desarrollo, fotograf\xEDa y producci\xF3n multimedia.`,
+      `Ayudas a los colaboradores del equipo con sus preguntas de trabajo: sus tareas, cifras del negocio (si su rol lo permite), y redacci\xF3n de mensajes o ideas de contenido.`,
+      `Responde en espa\xF1ol, de forma breve y directa, como un compa\xF1ero de trabajo eficiente.`,
+      `IMPORTANTE: Solo puedes usar los datos reales que te doy a continuaci\xF3n. Si algo no est\xE1 en estos datos, dilo honestamente ("no tengo ese dato") en vez de inventarlo. Nunca inventes cifras de dinero, fechas o nombres.`,
+      ``,
+      `=== DATOS REALES DISPONIBLES ===`,
+      ...contextLines,
+      `=== FIN DE DATOS ===`
+    ].join("\n");
+    const conversationHistory = Array.isArray(history) ? history.slice(-10).map((h) => ({
+      role: h.role === "model" ? "model" : "user",
+      parts: [{ text: String(h.text || "") }]
+    })) : [];
+    const ai = getGeminiClient();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [...conversationHistory, { role: "user", parts: [{ text: message }] }],
+      config: { systemInstruction }
+    });
+    res.json({ reply: response.text || "No pude generar una respuesta, intenta de nuevo." });
+  } catch (err) {
+    console.error("Error en el asistente de IA:", err);
+    res.status(500).json({ error: err?.message || "No se pudo contactar al asistente." });
   }
 });
 apiRouter.post("/sync-all", requireAuth, async (req, res) => {
