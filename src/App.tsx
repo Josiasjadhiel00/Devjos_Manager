@@ -8,6 +8,7 @@ import { QuickActionModal } from './components/layout/QuickActionModal';
 import { LoginView } from './components/auth/LoginView';
 import { UserProfileModal } from './components/auth/UserProfileModal';
 import { AccessRestrictedView } from './components/auth/AccessRestrictedView';
+import { AIAssistant } from './components/common/AIAssistant';
 
 // Views
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -165,6 +166,9 @@ const MainLayout: React.FC = () => {
         isOpen={isUserProfileModalOpen}
         onClose={() => setIsUserProfileModalOpen(false)}
       />
+
+      {/* Asistente de IA — botón flotante visible en toda la app para el equipo */}
+      <AIAssistant />
 
       {/* Modal Switch User / Login Popup */}
       {isAuthModalOpen && (
