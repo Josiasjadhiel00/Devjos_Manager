@@ -3306,7 +3306,7 @@ apiRouter.post("/assistant/chat", requireAuth, async (req, res) => {
     })) : [];
     const ai = getGeminiClient();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: [...conversationHistory, { role: "user", parts: [{ text: message }] }],
       config: { systemInstruction }
     });
