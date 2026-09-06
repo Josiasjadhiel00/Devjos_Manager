@@ -35,19 +35,34 @@ export const AIAssistant: React.FC = () => {
 
     try {
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-      const res = await fetch('/api/assistant/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          message: text,
-          history: nextMessages.slice(0, -1).slice(-10),
-        }),
-      });
+      const doRequest = () =>
+        fetch('/api/assistant/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            message: text,
+            history: nextMessages.slice(0, -1).slice(-10),
+          }),
+        });
+
+      let res = await doRequest();
+      // El modelo de IA a veces está temporalmente saturado (503) — se
+      // reintenta una vez sola antes de mostrar un error al usuario.
+      if (res.status === 503) {
+        await new Promise(r => setTimeout(r, 1200));
+        res = await doRequest();
+      }
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'No se pudo contactar al asistente.');
+      if (!res.ok) {
+        const rawMessage = data?.error || '';
+        const friendly = rawMessage.includes('UNAVAILABLE') || rawMessage.includes('high demand')
+          ? 'El asistente está saturado en este momento. Intenta de nuevo en unos segundos.'
+          : rawMessage || 'No se pudo contactar al asistente.';
+        throw new Error(friendly);
+      }
       setMessages(prev => [...prev, { role: 'model', text: data.reply }]);
     } catch (err: any) {
       setError(err?.message || 'No se pudo contactar al asistente. Intenta de nuevo.');
