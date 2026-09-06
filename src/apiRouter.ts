@@ -48,7 +48,9 @@ import { createPool, db } from './db/index.ts';
 import { sql } from 'drizzle-orm';
 import { requireAuth, requireRole, AuthRequest } from './middleware/auth.ts';
 import { adminAuth } from './lib/firebase-admin.ts';
+import { getGeminiClient } from './lib/gemini.ts';
 import { randomBytes } from 'crypto';
+import * as schema from './db/schema.ts';
 
 export const apiRouter = Router();
 
@@ -565,6 +567,111 @@ apiRouter.delete('/calendar-events/:id', requireAuth, async (req: AuthRequest, r
   } catch (error: any) {
     console.error('Error deleting calendar event from DB:', error);
     res.status(500).json({ error: error.message || 'Failed to delete calendar event' });
+  }
+});
+
+// Asistente de IA para el equipo — arma el contexto real (según el rol de
+// quien pregunta) ANTES de llamar a Gemini, para que nunca invente cifras
+// que no existen y nunca vea datos de un área que no le corresponde.
+apiRouter.post('/assistant/chat', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const role = (req.user as any)?.role;
+    const email = (req.user as any)?.email || '';
+    if (!role || role === 'Cliente') {
+      return res.status(403).json({ error: 'Este asistente es solo para el equipo del estudio.' });
+    }
+
+    const { message, history } = req.body || {};
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Falta el mensaje.' });
+    }
+
+    const teamList = await db.select().from(schema.teamMembers).catch(() => []);
+    const me = teamList.find(m => m.email.toLowerCase() === email.toLowerCase());
+    const myName = me?.name || email;
+
+    const today = new Date().toISOString().split('T')[0];
+    const thisMonthKey = today.slice(0, 7); // 'YYYY-MM'
+
+    const contextLines: string[] = [
+      `Fecha de hoy: ${today}`,
+      `Quien pregunta: ${myName} (rol: ${role})`,
+    ];
+
+    // Tareas asignadas a quien pregunta (todos los roles de equipo las ven)
+    if (me) {
+      const allTasks = await db.select().from(schema.tasks).catch(() => []);
+      const myTasks = allTasks
+        .filter(t => t.responsibleId === me.id && t.status !== 'Completada')
+        .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''))
+        .slice(0, 10);
+      if (myTasks.length > 0) {
+        contextLines.push(
+          `Tareas pendientes de ${myName} (${myTasks.length}):`,
+          ...myTasks.map(t => `- "${t.name}" | vence: ${t.dueDate} | prioridad: ${t.priority} | estado: ${t.status}`)
+        );
+      } else {
+        contextLines.push(`${myName} no tiene tareas pendientes asignadas.`);
+      }
+    }
+
+    // Datos financieros — solo para Administrador y Finanzas
+    if (role === 'Administrador' || role === 'Finanzas') {
+      const [allIncomes, allExpenses, allPayments, allProjects] = await Promise.all([
+        db.select().from(schema.incomes).catch(() => []),
+        db.select().from(schema.expenses).catch(() => []),
+        db.select().from(schema.payments).catch(() => []),
+        db.select().from(schema.projects).catch(() => []),
+      ]);
+      const monthIncome = allIncomes.filter(i => (i.date || '').startsWith(thisMonthKey)).reduce((s, i) => s + (i.amount || 0), 0);
+      const monthExpense = allExpenses.filter(e => (e.date || '').startsWith(thisMonthKey)).reduce((s, e) => s + (e.amount || 0), 0);
+      const pendingPayments = allPayments.filter(p => (p.totalPending || 0) > 0);
+      const pendingTotal = pendingPayments.reduce((s, p) => s + (p.totalPending || 0), 0);
+      const activeProjects = allProjects.filter(p => p.status !== 'Completado' && p.status !== 'Cancelado');
+
+      contextLines.push(
+        `Ingresos de este mes (${thisMonthKey}): ${monthIncome}`,
+        `Gastos de este mes (${thisMonthKey}): ${monthExpense}`,
+        `Utilidad de este mes: ${monthIncome - monthExpense}`,
+        `Pagos pendientes de cobro: ${pendingPayments.length} proyectos, total pendiente: ${pendingTotal}`,
+        `Proyectos activos: ${activeProjects.length}`
+      );
+    }
+
+    // Vista general — solo Administrador
+    if (role === 'Administrador') {
+      contextLines.push(`Colaboradores activos en el equipo: ${teamList.filter(m => m.active).length}`);
+    }
+
+    const systemInstruction = [
+      `Eres el asistente interno de DevJos Studio, un estudio de desarrollo, fotografía y producción multimedia.`,
+      `Ayudas a los colaboradores del equipo con sus preguntas de trabajo: sus tareas, cifras del negocio (si su rol lo permite), y redacción de mensajes o ideas de contenido.`,
+      `Responde en español, de forma breve y directa, como un compañero de trabajo eficiente.`,
+      `IMPORTANTE: Solo puedes usar los datos reales que te doy a continuación. Si algo no está en estos datos, dilo honestamente ("no tengo ese dato") en vez de inventarlo. Nunca inventes cifras de dinero, fechas o nombres.`,
+      ``,
+      `=== DATOS REALES DISPONIBLES ===`,
+      ...contextLines,
+      `=== FIN DE DATOS ===`,
+    ].join('\n');
+
+    const conversationHistory = Array.isArray(history)
+      ? history.slice(-10).map((h: any) => ({
+          role: h.role === 'model' ? 'model' : 'user',
+          parts: [{ text: String(h.text || '') }],
+        }))
+      : [];
+
+    const ai = getGeminiClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [...conversationHistory, { role: 'user', parts: [{ text: message }] }],
+      config: { systemInstruction },
+    });
+
+    res.json({ reply: response.text || 'No pude generar una respuesta, intenta de nuevo.' });
+  } catch (err: any) {
+    console.error('Error en el asistente de IA:', err);
+    res.status(500).json({ error: err?.message || 'No se pudo contactar al asistente.' });
   }
 });
 
