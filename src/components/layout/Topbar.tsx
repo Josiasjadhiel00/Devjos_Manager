@@ -4,15 +4,12 @@ import {
   Search,
   Plus,
   Bell,
-  Sun,
-  Moon,
   HardDrive,
   Shield,
   Layers,
   Database,
   User,
   LogOut,
-  Fingerprint,
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
@@ -22,16 +19,11 @@ export const Topbar: React.FC<{ onOpenMobileMenu: () => void }> = ({ onOpenMobil
   const {
     currentView,
     setCurrentView,
-    theme,
-    toggleTheme,
     notifications,
     setIsNotificationOpen,
     setIsSearchOpen,
     setQuickActionOpen,
     currentUserRole,
-    currentUser,
-    setIsUserProfileModalOpen,
-    setIsAuthModalOpen,
     settings,
     isDatabaseConnected,
     syncStatus,
@@ -111,16 +103,17 @@ export const Topbar: React.FC<{ onOpenMobileMenu: () => void }> = ({ onOpenMobil
         </div>
       </div>
 
-      {/* Right section: Search bar, Quick Action, Notifications, Theme, Active User */}
+      {/* Right section: Search bar, Quick Action, Notifications */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Global Search Button */}
+        {/* Global Search Button — solo lupa en móvil, expandido desde md: */}
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 text-xs transition-colors"
+          className="flex items-center justify-center md:justify-start gap-2 w-9 h-9 md:w-auto md:h-auto md:px-3 md:py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 text-xs transition-colors"
+          aria-label="Buscar"
         >
-          <Search className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="hidden sm:inline">Buscar...</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-700">
+          <Search className="w-4 h-4 md:w-3.5 md:h-3.5 text-cyan-400" />
+          <span className="hidden md:inline">Buscar...</span>
+          <span className="hidden md:inline text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-700">
             ⌘K
           </span>
         </button>
@@ -145,46 +138,6 @@ export const Topbar: React.FC<{ onOpenMobileMenu: () => void }> = ({ onOpenMobil
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-slate-950 animate-pulse" />
           )}
         </button>
-
-        {/* Dark/Light Mode Switcher */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-colors border border-transparent hover:border-slate-700"
-          aria-label="Cambiar tema"
-        >
-          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-blue-400" />}
-        </button>
-
-        {/* Active User / Profile Button */}
-        {currentUser ? (
-          <button
-            onClick={() => setIsUserProfileModalOpen(true)}
-            className="flex items-center gap-2 p-1 pl-2 pr-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700 hover:border-cyan-500/40 transition-all text-left group"
-            title="Ver mi perfil y permisos"
-          >
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              className="w-7 h-7 rounded-full object-cover border border-cyan-500/40 group-hover:border-cyan-400"
-            />
-            <div className="hidden md:block">
-              <p className="text-xs font-bold text-slate-200 group-hover:text-cyan-300 leading-tight truncate max-w-[110px]">
-                {currentUser.name}
-              </p>
-              <span className="text-[10px] text-cyan-400 font-semibold block leading-tight">
-                {currentUser.role}
-              </span>
-            </div>
-          </button>
-        ) : (
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 transition-all"
-          >
-            <Fingerprint className="w-3.5 h-3.5" />
-            <span>Ingresar</span>
-          </button>
-        )}
       </div>
     </header>
   );
