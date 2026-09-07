@@ -274,22 +274,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
 
-  // Entities
+  // Entities — arrancan vacíos; los datos reales llegan de Postgres apenas
+  // se confirma la sesión (ver refreshDataFromDb). Los "initialX" solo se
+  // usan si el propio usuario pide "Restablecer a datos de demostración"
+  // desde Configuración.
   const [settings, setSettings] = useState<StudioSettings>(initialSettings);
-  const [clients, setClients] = useState<Client[]>(initialClients);
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [services, setServices] = useState<Service[]>(initialServices);
-  const [quotes, setQuotes] = useState<Quote[]>(initialQuotes);
-  const [incomes, setIncomes] = useState<Income[]>(initialIncomes);
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
-  const [payments, setPayments] = useState<ProjectPayment[]>(initialPayments);
-  const [photoSessions, setPhotoSessions] = useState<PhotographySession[]>(initialPhotoSessions);
-  const [galleries, setGalleries] = useState<Gallery[]>(initialGalleries);
-  const [mediaProjects, setMediaProjects] = useState<MediaProject[]>(initialMediaProjects);
-  const [files, setFiles] = useState<ProjectFile[]>(initialFiles);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(initialCalendarEvents);
-  const [team, setTeam] = useState<TeamMember[]>(initialTeam);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [incomes, setIncomes] = useState<Income[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [payments, setPayments] = useState<ProjectPayment[]>([]);
+  const [photoSessions, setPhotoSessions] = useState<PhotographySession[]>([]);
+  const [galleries, setGalleries] = useState<Gallery[]>([]);
+  const [mediaProjects, setMediaProjects] = useState<MediaProject[]>([]);
+  const [files, setFiles] = useState<ProjectFile[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
 
@@ -340,20 +343,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return data;
         }
         if (data.settings) setSettings(data.settings);
-        if (data.clients && data.clients.length > 0) setClients(data.clients);
-        if (data.projects && data.projects.length > 0) setProjects(data.projects);
-        if (data.tasks && data.tasks.length > 0) setTasks(data.tasks);
-        if (data.services && data.services.length > 0) setServices(data.services);
-        if (data.quotes && data.quotes.length > 0) setQuotes(data.quotes);
-        if (data.incomes && data.incomes.length > 0) setIncomes(data.incomes);
-        if (data.expenses && data.expenses.length > 0) setExpenses(data.expenses);
-        if (data.payments && data.payments.length > 0) setPayments(data.payments);
-        if (data.photoSessions && data.photoSessions.length > 0) setPhotoSessions(data.photoSessions);
-        if (data.galleries && data.galleries.length > 0) setGalleries(data.galleries);
-        if (data.mediaProjects && data.mediaProjects.length > 0) setMediaProjects(data.mediaProjects);
-        if (data.files && data.files.length > 0) setFiles(data.files);
-        if (data.calendarEvents && data.calendarEvents.length > 0) setCalendarEvents(data.calendarEvents);
-        if (data.team && data.team.length > 0) setTeam(data.team);
+        setClients(data.clients || []);
+        setProjects(data.projects || []);
+        setTasks(data.tasks || []);
+        setServices(data.services || []);
+        setQuotes(data.quotes || []);
+        setIncomes(data.incomes || []);
+        setExpenses(data.expenses || []);
+        setPayments(data.payments || []);
+        setPhotoSessions(data.photoSessions || []);
+        setGalleries(data.galleries || []);
+        setMediaProjects(data.mediaProjects || []);
+        setFiles(data.files || []);
+        setCalendarEvents(data.calendarEvents || []);
+        setTeam(data.team || []);
         setIsDatabaseConnected(true);
         setSyncStatus('connected');
         return data;
