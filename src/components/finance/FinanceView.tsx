@@ -63,6 +63,34 @@ export const FinanceView: React.FC = () => {
     return acc;
   }, {});
 
+  // Comparativa mensual real — últimos 4 meses, calculados a partir de los
+  // ingresos y gastos registrados (antes eran 3 meses de ejemplo fijos).
+  const MONTH_LABELS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const monthlyComparisonData = React.useMemo(() => {
+    const now = new Date();
+    const buckets: { key: string; month: string; Ingresos: number; Gastos: number }[] = [];
+    for (let i = 3; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const label = i === 0 ? `${MONTH_LABELS_ES[d.getMonth()]} (Act.)` : MONTH_LABELS_ES[d.getMonth()];
+      buckets.push({ key, month: label, Ingresos: 0, Gastos: 0 });
+    }
+    const byKey = new Map(buckets.map(b => [b.key, b]));
+    incomes.forEach(inc => {
+      const d = new Date(inc.date);
+      if (isNaN(d.getTime())) return;
+      const b = byKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (b) b.Ingresos += inc.amount || 0;
+    });
+    expenses.forEach(exp => {
+      const d = new Date(exp.date);
+      if (isNaN(d.getTime())) return;
+      const b = byKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (b) b.Gastos += exp.amount || 0;
+    });
+    return buckets;
+  }, [incomes, expenses]);
+
   const expensePieData = Object.keys(expenseCategoryBreakdown).map((cat, idx) => ({
     name: cat,
     value: expenseCategoryBreakdown[cat],
@@ -179,12 +207,7 @@ export const FinanceView: React.FC = () => {
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={[
-                    { month: 'Mayo', Ingresos: 2100, Gastos: 420 },
-                    { month: 'Junio', Ingresos: 3400, Gastos: 610 },
-                    { month: 'Julio', Ingresos: 4800, Gastos: 790 },
-                    { month: 'Agosto (Act.)', Ingresos: metrics.monthlyRevenue, Gastos: metrics.monthlyExpenses },
-                  ]}
+                  data={monthlyComparisonData}
                   margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
