@@ -307,6 +307,7 @@ export async function getAllAppData() {
       filesList,
       calendarEventsList,
       teamList,
+      notificationsList,
     ] = await Promise.all([
       db.select().from(schema.studioSettings).where(eq(schema.studioSettings.id, 'default')).catch(() => []),
       db.select().from(schema.clients).catch(() => []),
@@ -323,6 +324,7 @@ export async function getAllAppData() {
       db.select().from(schema.projectFiles).catch(() => []),
       db.select().from(schema.calendarEvents).catch(() => []),
       db.select().from(schema.teamMembers).catch(() => []),
+      db.select().from(schema.notifications).catch(() => []),
     ]);
 
     const settings = settingsRows && settingsRows[0] ? JSON.parse(settingsRows[0].settingsJson) : initialSettings;
@@ -368,6 +370,9 @@ export async function getAllAppData() {
       files: filesList || [],
       calendarEvents: calendarEventsList || [],
       team: team,
+      notifications: (notificationsList || [])
+        .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))
+        .slice(0, 50),
     };
   } catch (error) {
     console.error('Database query failed in getAllAppData:', error);
@@ -443,6 +448,24 @@ export async function updateClientInDb(id: string, data: any) {
 
 export async function deleteClientFromDb(id: string) {
   try {
+    // Cascada completa: borra primero todos los proyectos de este cliente
+    // (lo que a su vez arrastra sus tareas/pagos/sesiones/etc. vía
+    // deleteProjectFromDb), y luego todo lo demás que cuelga directo del
+    // cliente — así no quedan registros huérfanos apuntando a un cliente
+    // que ya no existe.
+    const clientProjects = await db.select({ id: schema.projects.id })
+      .from(schema.projects).where(eq(schema.projects.clientId, id));
+    for (const p of clientProjects) {
+      await deleteProjectFromDb(p.id);
+    }
+    await db.delete(schema.quotes).where(eq(schema.quotes.clientId, id));
+    await db.delete(schema.incomes).where(eq(schema.incomes.clientId, id));
+    await db.delete(schema.payments).where(eq(schema.payments.clientId, id));
+    await db.delete(schema.photoSessions).where(eq(schema.photoSessions.clientId, id));
+    await db.delete(schema.galleries).where(eq(schema.galleries.clientId, id));
+    await db.delete(schema.mediaProjects).where(eq(schema.mediaProjects.clientId, id));
+    await db.delete(schema.projectFiles).where(eq(schema.projectFiles.clientId, id));
+    await db.delete(schema.calendarEvents).where(eq(schema.calendarEvents.clientId, id));
     await db.delete(schema.clients).where(eq(schema.clients.id, id));
   } catch (error) {
     console.error('Failed to delete client:', error);
@@ -494,6 +517,16 @@ export async function updateProjectInDb(id: string, data: any) {
 
 export async function deleteProjectFromDb(id: string) {
   try {
+    // Borra en cascada todo lo que dependía de este proyecto — antes solo
+    // se borraba la fila del proyecto y dejaba huérfanos los pagos, tareas,
+    // cotizaciones, sesiones fotográficas, etc. asociados (por eso
+    // aparecían pagos con "Proyecto General" después de borrar un proyecto).
+    await db.delete(schema.payments).where(eq(schema.payments.projectId, id));
+    await db.delete(schema.tasks).where(eq(schema.tasks.projectId, id));
+    await db.delete(schema.photoSessions).where(eq(schema.photoSessions.projectId, id));
+    await db.delete(schema.mediaProjects).where(eq(schema.mediaProjects.projectId, id));
+    await db.delete(schema.calendarEvents).where(eq(schema.calendarEvents.projectId, id));
+    await db.delete(schema.projectFiles).where(eq(schema.projectFiles.projectId, id));
     await db.delete(schema.projects).where(eq(schema.projects.id, id));
   } catch (error) {
     console.error('Failed to delete project:', error);
@@ -1170,6 +1203,62 @@ export async function deleteCalendarEventFromDb(id: string) {
   } catch (error) {
     console.error('Failed to delete calendar event:', error);
     throw new Error('Database error deleting calendar event', { cause: error });
+  }
+}
+
+// Notifications operations
+export async function insertNotification(data: any) {
+  try {
+    const payload = {
+      id: data.id,
+      title: data.title || '',
+      message: data.message || '',
+      type: data.type || 'system',
+      timestamp: data.timestamp || new Date().toISOString(),
+      read: data.read || false,
+      link: data.link || '',
+    };
+    const result = await db.insert(schema.notifications).values(payload).onConflictDoUpdate({
+      target: schema.notifications.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert notification:', error);
+    throw new Error('Database error inserting notification', { cause: error });
+  }
+}
+
+export async function markNotificationReadInDb(id: string) {
+  try {
+    const result = await db.update(schema.notifications)
+      .set({ read: true })
+      .where(eq(schema.notifications.id, id))
+      .returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to mark notification as read:', error);
+    throw new Error('Database error updating notification', { cause: error });
+  }
+}
+
+export async function deleteNotificationFromDb(id: string) {
+  try {
+    await db.delete(schema.notifications).where(eq(schema.notifications.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete notification:', error);
+    throw new Error('Database error deleting notification', { cause: error });
+  }
+}
+
+export async function clearAllNotificationsFromDb() {
+  try {
+    await db.delete(schema.notifications);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to clear notifications:', error);
+    throw new Error('Database error clearing notifications', { cause: error });
   }
 }
 

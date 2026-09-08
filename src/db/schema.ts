@@ -235,3 +235,16 @@ export const studioSettings = pgTable('studio_settings', {
   settingsJson: text('settings_json').notNull(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// Notifications table — antes vivían solo en memoria del navegador y se
+// reiniciaban con datos de muestra en cada carga de página.
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  message: text('message').default(''),
+  type: text('type').notNull().default('system'),
+  timestamp: text('timestamp').notNull(),
+  read: boolean('read').notNull().default(false),
+  link: text('link').default(''),
+  createdAt: timestamp('created_at').defaultNow(),
+});

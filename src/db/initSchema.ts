@@ -220,6 +220,17 @@ CREATE TABLE IF NOT EXISTS "studio_settings" (
   "settings_json" text NOT NULL,
   "updated_at" timestamp DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS "notifications" (
+  "id" text PRIMARY KEY NOT NULL,
+  "title" text NOT NULL,
+  "message" text DEFAULT '',
+  "type" text DEFAULT 'system' NOT NULL,
+  "timestamp" text NOT NULL,
+  "read" boolean DEFAULT false NOT NULL,
+  "link" text DEFAULT '',
+  "created_at" timestamp DEFAULT now()
+);
 `;
 
 export async function ensurePostgresTablesExist(pool: Pool) {
