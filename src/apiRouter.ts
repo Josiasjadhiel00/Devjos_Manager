@@ -41,6 +41,10 @@ import {
   insertCalendarEvent,
   updateCalendarEventInDb,
   deleteCalendarEventFromDb,
+  insertNotification,
+  markNotificationReadInDb,
+  deleteNotificationFromDb,
+  clearAllNotificationsFromDb,
   syncAllAppData,
   updateSettingsInDb,
 } from './db/queries.ts';
@@ -672,6 +676,47 @@ apiRouter.post('/assistant/chat', requireAuth, async (req: AuthRequest, res) => 
   } catch (err: any) {
     console.error('Error en el asistente de IA:', err);
     res.status(500).json({ error: err?.message || 'No se pudo contactar al asistente.' });
+  }
+});
+
+// Notifications Endpoints
+apiRouter.post('/notifications', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const newNotif = await insertNotification(req.body);
+    res.status(201).json(newNotif);
+  } catch (error: any) {
+    console.error('Error saving notification in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to save notification' });
+  }
+});
+
+apiRouter.put('/notifications/:id/read', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const updated = await markNotificationReadInDb(req.params.id);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error marking notification as read in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to update notification' });
+  }
+});
+
+apiRouter.delete('/notifications/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await deleteNotificationFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error: any) {
+    console.error('Error deleting notification from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete notification' });
+  }
+});
+
+apiRouter.delete('/notifications', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await clearAllNotificationsFromDb();
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error clearing notifications from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to clear notifications' });
   }
 });
 
