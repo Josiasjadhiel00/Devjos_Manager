@@ -23,6 +23,7 @@ __export(schema_exports, {
   galleries: () => galleries,
   incomes: () => incomes,
   mediaProjects: () => mediaProjects,
+  notifications: () => notifications,
   payments: () => payments,
   photoSessions: () => photoSessions,
   projectFiles: () => projectFiles,
@@ -238,6 +239,16 @@ var studioSettings = pgTable("studio_settings", {
   id: text("id").primaryKey(),
   settingsJson: text("settings_json").notNull(),
   updatedAt: timestamp("updated_at").defaultNow()
+});
+var notifications = pgTable("notifications", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  message: text("message").default(""),
+  type: text("type").notNull().default("system"),
+  timestamp: text("timestamp").notNull(),
+  read: boolean("read").notNull().default(false),
+  link: text("link").default(""),
+  createdAt: timestamp("created_at").defaultNow()
 });
 
 // src/db/index.ts
@@ -495,6 +506,17 @@ CREATE TABLE IF NOT EXISTS "studio_settings" (
   "id" text PRIMARY KEY NOT NULL,
   "settings_json" text NOT NULL,
   "updated_at" timestamp DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "notifications" (
+  "id" text PRIMARY KEY NOT NULL,
+  "title" text NOT NULL,
+  "message" text DEFAULT '',
+  "type" text DEFAULT 'system' NOT NULL,
+  "timestamp" text NOT NULL,
+  "read" boolean DEFAULT false NOT NULL,
+  "link" text DEFAULT '',
+  "created_at" timestamp DEFAULT now()
 );
 `;
 async function ensurePostgresTablesExist(pool2) {
@@ -1950,7 +1972,8 @@ async function getAllAppData() {
       mediaProjectsList,
       filesList,
       calendarEventsList,
-      teamList
+      teamList,
+      notificationsList
     ] = await Promise.all([
       db.select().from(studioSettings).where(eq(studioSettings.id, "default")).catch(() => []),
       db.select().from(clients).catch(() => []),
@@ -1966,7 +1989,8 @@ async function getAllAppData() {
       db.select().from(mediaProjects).catch(() => []),
       db.select().from(projectFiles).catch(() => []),
       db.select().from(calendarEvents).catch(() => []),
-      db.select().from(teamMembers).catch(() => [])
+      db.select().from(teamMembers).catch(() => []),
+      db.select().from(notifications).catch(() => [])
     ]);
     const settings = settingsRows && settingsRows[0] ? JSON.parse(settingsRows[0].settingsJson) : initialSettings;
     const quotes2 = (quotesList || []).map((q) => ({
@@ -2004,7 +2028,8 @@ async function getAllAppData() {
       mediaProjects: mediaProjects2,
       files: filesList || [],
       calendarEvents: calendarEventsList || [],
-      team
+      team,
+      notifications: (notificationsList || []).sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || "")).slice(0, 50)
     };
   } catch (error) {
     console.error("Database query failed in getAllAppData:", error);
@@ -2052,6 +2077,18 @@ async function updateClientInDb(id, data) {
 }
 async function deleteClientFromDb(id) {
   try {
+    const clientProjects = await db.select({ id: projects.id }).from(projects).where(eq(projects.clientId, id));
+    for (const p of clientProjects) {
+      await deleteProjectFromDb(p.id);
+    }
+    await db.delete(quotes).where(eq(quotes.clientId, id));
+    await db.delete(incomes).where(eq(incomes.clientId, id));
+    await db.delete(payments).where(eq(payments.clientId, id));
+    await db.delete(photoSessions).where(eq(photoSessions.clientId, id));
+    await db.delete(galleries).where(eq(galleries.clientId, id));
+    await db.delete(mediaProjects).where(eq(mediaProjects.clientId, id));
+    await db.delete(projectFiles).where(eq(projectFiles.clientId, id));
+    await db.delete(calendarEvents).where(eq(calendarEvents.clientId, id));
     await db.delete(clients).where(eq(clients.id, id));
   } catch (error) {
     console.error("Failed to delete client:", error);
@@ -2099,6 +2136,12 @@ async function updateProjectInDb(id, data) {
 }
 async function deleteProjectFromDb(id) {
   try {
+    await db.delete(payments).where(eq(payments.projectId, id));
+    await db.delete(tasks).where(eq(tasks.projectId, id));
+    await db.delete(photoSessions).where(eq(photoSessions.projectId, id));
+    await db.delete(mediaProjects).where(eq(mediaProjects.projectId, id));
+    await db.delete(calendarEvents).where(eq(calendarEvents.projectId, id));
+    await db.delete(projectFiles).where(eq(projectFiles.projectId, id));
     await db.delete(projects).where(eq(projects.id, id));
   } catch (error) {
     console.error("Failed to delete project:", error);
@@ -2698,6 +2741,54 @@ async function deleteCalendarEventFromDb(id) {
   } catch (error) {
     console.error("Failed to delete calendar event:", error);
     throw new Error("Database error deleting calendar event", { cause: error });
+  }
+}
+async function insertNotification(data) {
+  try {
+    const payload = {
+      id: data.id,
+      title: data.title || "",
+      message: data.message || "",
+      type: data.type || "system",
+      timestamp: data.timestamp || (/* @__PURE__ */ new Date()).toISOString(),
+      read: data.read || false,
+      link: data.link || ""
+    };
+    const result = await db.insert(notifications).values(payload).onConflictDoUpdate({
+      target: notifications.id,
+      set: payload
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error("Failed to insert notification:", error);
+    throw new Error("Database error inserting notification", { cause: error });
+  }
+}
+async function markNotificationReadInDb(id) {
+  try {
+    const result = await db.update(notifications).set({ read: true }).where(eq(notifications.id, id)).returning();
+    return result[0];
+  } catch (error) {
+    console.error("Failed to mark notification as read:", error);
+    throw new Error("Database error updating notification", { cause: error });
+  }
+}
+async function deleteNotificationFromDb(id) {
+  try {
+    await db.delete(notifications).where(eq(notifications.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete notification:", error);
+    throw new Error("Database error deleting notification", { cause: error });
+  }
+}
+async function clearAllNotificationsFromDb() {
+  try {
+    await db.delete(notifications);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to clear notifications:", error);
+    throw new Error("Database error clearing notifications", { cause: error });
   }
 }
 
@@ -3314,6 +3405,42 @@ apiRouter.post("/assistant/chat", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Error en el asistente de IA:", err);
     res.status(500).json({ error: err?.message || "No se pudo contactar al asistente." });
+  }
+});
+apiRouter.post("/notifications", requireAuth, async (req, res) => {
+  try {
+    const newNotif = await insertNotification(req.body);
+    res.status(201).json(newNotif);
+  } catch (error) {
+    console.error("Error saving notification in DB:", error);
+    res.status(500).json({ error: error.message || "Failed to save notification" });
+  }
+});
+apiRouter.put("/notifications/:id/read", requireAuth, async (req, res) => {
+  try {
+    const updated = await markNotificationReadInDb(req.params.id);
+    res.json(updated);
+  } catch (error) {
+    console.error("Error marking notification as read in DB:", error);
+    res.status(500).json({ error: error.message || "Failed to update notification" });
+  }
+});
+apiRouter.delete("/notifications/:id", requireAuth, async (req, res) => {
+  try {
+    await deleteNotificationFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error) {
+    console.error("Error deleting notification from DB:", error);
+    res.status(500).json({ error: error.message || "Failed to delete notification" });
+  }
+});
+apiRouter.delete("/notifications", requireAuth, async (req, res) => {
+  try {
+    await clearAllNotificationsFromDb();
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error clearing notifications from DB:", error);
+    res.status(500).json({ error: error.message || "Failed to clear notifications" });
   }
 });
 apiRouter.post("/sync-all", requireAuth, async (req, res) => {
