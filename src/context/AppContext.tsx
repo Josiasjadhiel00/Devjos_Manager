@@ -189,6 +189,7 @@ interface AppContextType {
   deleteExpense: (id: string) => void;
 
   recordPayment: (projectId: string, amount: number, method: PaymentMethod, note: string) => void;
+  deletePaymentRecord: (id: string) => void;
 
   addPhotoSession: (session: Omit<PhotographySession, 'id'>) => PhotographySession;
   updatePhotoSession: (id: string, updates: Partial<PhotographySession>) => void;
@@ -218,6 +219,8 @@ interface AppContextType {
 
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  deleteNotification: (id: string) => void;
+  clearAllNotifications: () => void;
   addNotification: (title: string, message: string, type?: NotificationItem['type']) => void;
 
   updateSettings: (updates: Partial<StudioSettings>) => void;
@@ -293,7 +296,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
 
   // Wraps fetch for write operations: throws on non-2xx responses (fetch alone
@@ -357,6 +360,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setFiles(data.files || []);
         setCalendarEvents(data.calendarEvents || []);
         setTeam(data.team || []);
+        setNotifications(data.notifications || []);
         setIsDatabaseConnected(true);
         setSyncStatus('connected');
         return data;
@@ -845,10 +849,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title,
       message,
       type,
-      timestamp: 'Justo ahora',
+      timestamp: new Date().toISOString(),
       read: false,
     };
     setNotifications(prev => [newNotif, ...prev]);
+
+    syncToBackend('/api/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newNotif),
+    }).catch(e => { console.error('Sync notification to SQL info:', e); });
   };
 
   const toggleTheme = () => {
@@ -1288,6 +1298,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  // Elimina un registro de "cuenta por cobrar" — útil para limpiar
+  // registros huérfanos que quedaron apuntando a un proyecto ya borrado.
+  const deletePaymentRecord = (id: string) => {
+    setPayments(prev => prev.filter(p => p.id !== id));
+
+    syncToBackend(`/api/payments/${id}`, { method: 'DELETE' })
+      .catch(e => { console.error('Sync delete payment to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino el registro de pago de la base de datos.', 'system'); });
+  };
+
   // PHOTOGRAPHY CRUD
   const addPhotoSession = (data: Omit<PhotographySession, 'id'>): PhotographySession => {
     const newSession: PhotographySession = {
@@ -1562,10 +1581,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // NOTIFICATIONS
   const markNotificationRead = (id: string) => {
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
+
+    syncToBackend(`/api/notifications/${id}/read`, { method: 'PUT' })
+      .catch(e => console.error('Sync mark notification read to SQL info:', e));
   };
 
   const markAllNotificationsRead = () => {
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+
+    unreadIds.forEach(id => {
+      syncToBackend(`/api/notifications/${id}/read`, { method: 'PUT' })
+        .catch(e => console.error('Sync mark notification read to SQL info:', e));
+    });
+  };
+
+  const deleteNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+
+    syncToBackend(`/api/notifications/${id}`, { method: 'DELETE' })
+      .catch(e => console.error('Sync delete notification to SQL info:', e));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+
+    syncToBackend('/api/notifications', { method: 'DELETE' })
+      .catch(e => console.error('Sync clear notifications to SQL info:', e));
   };
 
   // SETTINGS & DEMO RESET
@@ -1723,6 +1765,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addExpense,
         deleteExpense,
         recordPayment,
+        deletePaymentRecord,
         addPhotoSession,
         updatePhotoSession,
         deletePhotoSession,
@@ -1745,6 +1788,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteTeamMember,
         markNotificationRead,
         markAllNotificationsRead,
+        deleteNotification,
+        clearAllNotifications,
         addNotification,
         updateSettings,
         resetToDemoData,
