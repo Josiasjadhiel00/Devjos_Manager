@@ -8,6 +8,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Trash2,
   AlertCircle,
   Download,
   CreditCard,
@@ -20,7 +21,7 @@ import { StatCard, Badge } from '../ui/StatCard';
 import { PaymentMethod } from '../../types';
 
 export const PaymentsView: React.FC = () => {
-  const { payments, projects, clients, incomes, addIncome, settings, formatMoney, currencySymbol, currencyCode } = useApp();
+  const { payments, projects, clients, incomes, addIncome, deletePaymentRecord, settings, formatMoney, currencySymbol, currencyCode } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedPaymentProject, setSelectedPaymentProject] = useState<string | null>(null);
@@ -243,12 +244,25 @@ export const PaymentsView: React.FC = () => {
                         </Badge>
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <button
-                          onClick={() => handleOpenPayModal(payment.projectId, payment.totalPending)}
-                          className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold transition-colors"
-                        >
-                          + Registrar Abono
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenPayModal(payment.projectId, payment.totalPending)}
+                            className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold transition-colors"
+                          >
+                            + Registrar Abono
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('¿Eliminar este registro de pago? No se puede deshacer.')) {
+                                deletePaymentRecord(payment.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/30 transition-colors"
+                            title="Eliminar registro"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
