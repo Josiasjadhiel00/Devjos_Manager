@@ -71,7 +71,7 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
         },
       ]);
     }
-  }, [quoteToEdit, isOpen, clients, services]);
+  }, [quoteToEdit?.id, isOpen]);
 
   if (!isOpen) return null;
 
