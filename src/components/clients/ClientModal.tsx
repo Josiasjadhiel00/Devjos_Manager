@@ -62,7 +62,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         avatar: '',
       });
     }
-  }, [clientToEdit, isOpen]);
+  }, [clientToEdit?.id, isOpen]);
 
   if (!isOpen) return null;
 
