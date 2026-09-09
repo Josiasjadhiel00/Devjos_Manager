@@ -62,7 +62,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         notes: '',
       });
     }
-  }, [projectToEdit, isOpen, clients, team]);
+  }, [projectToEdit?.id, isOpen]);
 
   if (!isOpen) return null;
 
