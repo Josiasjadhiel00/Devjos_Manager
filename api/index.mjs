@@ -86,6 +86,9 @@ var tasks = pgTable("tasks", {
   priority: text("priority").notNull().default("Media"),
   dueDate: text("due_date").notNull(),
   status: text("status").notNull().default("Pendiente"),
+  timeSpentSeconds: integer("time_spent_seconds").notNull().default(0),
+  isTimerRunning: boolean("is_timer_running").notNull().default(false),
+  timerStartedAt: text("timer_started_at").default(""),
   createdAt: timestamp("created_at").defaultNow()
 });
 var services = pgTable("services", {
@@ -341,8 +344,18 @@ CREATE TABLE IF NOT EXISTS "tasks" (
   "priority" text DEFAULT 'Media' NOT NULL,
   "due_date" text NOT NULL,
   "status" text DEFAULT 'Pendiente' NOT NULL,
+  "time_spent_seconds" integer DEFAULT 0 NOT NULL,
+  "is_timer_running" boolean DEFAULT false NOT NULL,
+  "timer_started_at" text DEFAULT '',
   "created_at" timestamp DEFAULT now()
 );
+
+-- Por si la tabla "tasks" ya exist\xEDa de antes (instalaci\xF3n en producci\xF3n),
+-- CREATE TABLE IF NOT EXISTS no le agrega columnas nuevas \u2014 hay que
+-- a\xF1adirlas a mano para el cron\xF3metro de tareas.
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "time_spent_seconds" integer DEFAULT 0 NOT NULL;
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "is_timer_running" boolean DEFAULT false NOT NULL;
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "timer_started_at" text DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS "services" (
   "id" text PRIMARY KEY NOT NULL,
@@ -2158,7 +2171,10 @@ async function insertTask(data) {
       responsibleId: data.responsibleId || "",
       priority: data.priority || "Media",
       dueDate: data.dueDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-      status: data.status || "Pendiente"
+      status: data.status || "Pendiente",
+      timeSpentSeconds: data.timeSpentSeconds || 0,
+      isTimerRunning: data.isTimerRunning || false,
+      timerStartedAt: data.timerStartedAt || ""
     };
     const result = await db.insert(tasks).values(payload).onConflictDoUpdate({
       target: tasks.id,
