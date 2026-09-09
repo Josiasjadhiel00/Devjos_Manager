@@ -170,6 +170,9 @@ interface AppContextType {
 
   addTask: (task: Omit<Task, 'id'>) => Task;
   updateTask: (id: string, updates: Partial<Task>) => void;
+  startTaskTimer: (id: string) => void;
+  stopTaskTimer: (id: string) => void;
+  resetTaskTimer: (id: string) => void;
   toggleTaskStatus: (id: string) => void;
   deleteTask: (id: string) => void;
 
@@ -1045,6 +1048,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }).catch(e => { console.error('Sync update task to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'Sync update task to SQL info: No se guardo en la base de datos.', 'system'); });
   };
 
+  // Cronómetro de tareas — estos 3 botones existían en la pantalla pero
+  // llamaban a funciones que nunca se habían implementado.
+  const startTaskTimer = (id: string) => {
+    updateTask(id, { isTimerRunning: true, timerStartedAt: new Date().toISOString() });
+  };
+
+  const stopTaskTimer = (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task || !task.isTimerRunning || !task.timerStartedAt) return;
+    const elapsed = Math.max(0, Math.floor((Date.now() - new Date(task.timerStartedAt).getTime()) / 1000));
+    updateTask(id, {
+      isTimerRunning: false,
+      timerStartedAt: '',
+      timeSpentSeconds: (task.timeSpentSeconds || 0) + elapsed,
+    });
+  };
+
+  const resetTaskTimer = (id: string) => {
+    updateTask(id, { isTimerRunning: false, timerStartedAt: '', timeSpentSeconds: 0 });
+  };
+
   const toggleTaskStatus = (id: string) => {
     let nextStatus: TaskStatus = 'Pendiente';
     setTasks(prev => prev.map(t => {
@@ -1754,6 +1778,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProjectStatus,
         addTask,
         updateTask,
+        startTaskTimer,
+        stopTaskTimer,
+        resetTaskTimer,
         toggleTaskStatus,
         deleteTask,
         addService,
