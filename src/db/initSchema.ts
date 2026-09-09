@@ -54,8 +54,18 @@ CREATE TABLE IF NOT EXISTS "tasks" (
   "priority" text DEFAULT 'Media' NOT NULL,
   "due_date" text NOT NULL,
   "status" text DEFAULT 'Pendiente' NOT NULL,
+  "time_spent_seconds" integer DEFAULT 0 NOT NULL,
+  "is_timer_running" boolean DEFAULT false NOT NULL,
+  "timer_started_at" text DEFAULT '',
   "created_at" timestamp DEFAULT now()
 );
+
+-- Por si la tabla "tasks" ya existía de antes (instalación en producción),
+-- CREATE TABLE IF NOT EXISTS no le agrega columnas nuevas — hay que
+-- añadirlas a mano para el cronómetro de tareas.
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "time_spent_seconds" integer DEFAULT 0 NOT NULL;
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "is_timer_running" boolean DEFAULT false NOT NULL;
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "timer_started_at" text DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS "services" (
   "id" text PRIMARY KEY NOT NULL,

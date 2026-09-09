@@ -57,6 +57,9 @@ export const tasks = pgTable('tasks', {
   priority: text('priority').notNull().default('Media'),
   dueDate: text('due_date').notNull(),
   status: text('status').notNull().default('Pendiente'),
+  timeSpentSeconds: integer('time_spent_seconds').notNull().default(0),
+  isTimerRunning: boolean('is_timer_running').notNull().default(false),
+  timerStartedAt: text('timer_started_at').default(''),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

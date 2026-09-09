@@ -546,6 +546,9 @@ export async function insertTask(data: any) {
       priority: data.priority || 'Media',
       dueDate: data.dueDate || new Date().toISOString().split('T')[0],
       status: data.status || 'Pendiente',
+      timeSpentSeconds: data.timeSpentSeconds || 0,
+      isTimerRunning: data.isTimerRunning || false,
+      timerStartedAt: data.timerStartedAt || '',
     };
     const result = await db.insert(schema.tasks).values(payload).onConflictDoUpdate({
       target: schema.tasks.id,
