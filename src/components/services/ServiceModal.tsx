@@ -49,7 +49,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         active: true,
       });
     }
-  }, [serviceToEdit, isOpen]);
+  }, [serviceToEdit?.id, isOpen]);
 
   if (!isOpen) return null;
 
