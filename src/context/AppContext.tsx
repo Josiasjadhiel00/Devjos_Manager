@@ -482,7 +482,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Check Vercel Postgres diagnostic status
   const checkVercelDbStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/db-status');
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const res = await fetch('/api/db-status', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
       return data;
     } catch (e: any) {
