@@ -89,6 +89,9 @@ export interface Task {
   priority: Priority;
   dueDate: string;
   status: TaskStatus;
+  timeSpentSeconds?: number;
+  isTimerRunning?: boolean;
+  timerStartedAt?: string;
 }
 
 export type ServiceCategory = 
