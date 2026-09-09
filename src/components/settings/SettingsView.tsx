@@ -36,8 +36,6 @@ export const SettingsView: React.FC = () => {
   const { 
     settings, 
     updateSettings, 
-    testNasConnection, 
-    createNasFoldersTree, 
     resetToDemoData,
     testFirestoreConnection,
     forceUploadToFirestore,
@@ -52,13 +50,37 @@ export const SettingsView: React.FC = () => {
     toggleTheme,
   } = useApp();
 
+  // Estas dos funciones nunca existieron en el contexto de la app — los
+  // botones de NAS las llamaban igual y probablemente fallaban en
+  // silencio o tiraban un error. NAS sigue en modo demostración (ver aviso
+  // en pantalla), así que aquí solo simulan la prueba de forma honesta,
+  // sin intentar conectar a nada real.
+  const testNasConnection = async (): Promise<{ success: boolean; latencyMs: number; message: string }> => {
+    await new Promise(r => setTimeout(r, 600));
+    return {
+      success: false,
+      latencyMs: 0,
+      message: 'Modo demostración: los datos de conexión se guardaron, pero todavía no hay un NAS real para probar.',
+    };
+  };
+
+  const createNasFoldersTree = async (): Promise<void> => {
+    await new Promise(r => setTimeout(r, 600));
+    // No-op intencional — modo demostración, sin NAS real conectado.
+  };
+
   const [formData, setFormData] = useState({ ...settings });
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Sync formData when settings change
+  // Solo se sincroniza al entrar a la pantalla — si dependiera de `settings`
+  // directamente, el refresco automático cada 20s (para ver cambios de
+  // otros dispositivos) borraría lo que estuvieras escribiendo a mitad de
+  // editar.
   React.useEffect(() => {
     setFormData({ ...settings });
-  }, [settings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [isTestingNas, setIsTestingNas] = useState(false);
   const [nasTestResult, setNasTestResult] = useState<{
     success: boolean;
