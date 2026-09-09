@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, X, Send, Loader2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { auth } from '../../lib/firebase';
@@ -6,6 +6,19 @@ import { auth } from '../../lib/firebase';
 interface ChatMessage {
   role: 'user' | 'model';
   text: string;
+}
+
+const POSITION_KEY = 'devjos_ai_assistant_position';
+const BUTTON_SIZE = 56; // w-14 h-14
+const MARGIN = 8;
+
+function clampPosition(x: number, y: number) {
+  const maxX = window.innerWidth - BUTTON_SIZE - MARGIN;
+  const maxY = window.innerHeight - BUTTON_SIZE - MARGIN;
+  return {
+    x: Math.min(Math.max(x, MARGIN), Math.max(maxX, MARGIN)),
+    y: Math.min(Math.max(y, MARGIN), Math.max(maxY, MARGIN)),
+  };
 }
 
 export const AIAssistant: React.FC = () => {
@@ -17,9 +30,72 @@ export const AIAssistant: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Posición del botón flotante (null = esquina inferior derecha por
+  // defecto). Se guarda en este dispositivo para que quede donde lo dejes.
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number; dragging: boolean } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(POSITION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setPosition(clampPosition(parsed.x, parsed.y));
+      }
+    } catch {
+      // ignorar si no hay posición guardada válida
+    }
+  }, []);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isSending]);
+
+  const getCurrentXY = useCallback((): { x: number; y: number } => {
+    if (position) return position;
+    return {
+      x: window.innerWidth - BUTTON_SIZE - 20,
+      y: window.innerHeight - BUTTON_SIZE - 20,
+    };
+  }, [position]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const { x, y } = getCurrentXY();
+    dragState.current = { startX: e.clientX, startY: e.clientY, origX: x, origY: y, dragging: false };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragState.current) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    if (!dragState.current.dragging && Math.hypot(dx, dy) > 6) {
+      dragState.current.dragging = true;
+      setIsDragging(true);
+    }
+    if (dragState.current.dragging) {
+      const next = clampPosition(dragState.current.origX + dx, dragState.current.origY + dy);
+      setPosition(next);
+    }
+  };
+
+  const handlePointerUp = () => {
+    const wasDragging = dragState.current?.dragging;
+    if (wasDragging && position) {
+      try {
+        localStorage.setItem(POSITION_KEY, JSON.stringify(position));
+      } catch {
+        // almacenamiento no disponible, no es crítico
+      }
+    }
+    dragState.current = null;
+    setIsDragging(false);
+    if (!wasDragging) {
+      // Fue un clic real, no un arrastre — abre el asistente.
+      setIsOpen(true);
+    }
+  };
 
   // El asistente es solo para el equipo, nunca para clientes del portal.
   if (!currentUser || currentUser.role === 'Cliente') return null;
@@ -71,22 +147,39 @@ export const AIAssistant: React.FC = () => {
     }
   };
 
+  const btnPos = getCurrentXY();
+
   return (
     <>
-      {/* Botón flotante */}
+      {/* Botón flotante — arrastrable */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-[#168dda] via-[#7a3fc4] to-[#1bb7e8] shadow-lg shadow-purple-500/30 flex items-center justify-center text-white hover:scale-105 transition-transform"
-          title="Asistente DevJos"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ left: btnPos.x, top: btnPos.y, touchAction: 'none' }}
+          className={`fixed z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-[#168dda] via-[#7a3fc4] to-[#1bb7e8] shadow-lg shadow-purple-500/30 flex items-center justify-center text-white transition-transform select-none ${
+            isDragging ? 'scale-110 cursor-grabbing' : 'hover:scale-105 cursor-grab'
+          }`}
+          title="Asistente DevJos — arrástrame para moverme"
         >
-          <Sparkles className="w-6 h-6" />
+          <Sparkles className="w-6 h-6 pointer-events-none" />
         </button>
       )}
 
       {/* Panel de chat */}
       {isOpen && (
-        <div className="fixed inset-0 sm:inset-auto sm:bottom-5 sm:right-5 z-40 w-full h-full sm:w-96 sm:h-[560px] sm:max-h-[80vh] bg-slate-900 sm:border sm:border-slate-800 sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed inset-0 sm:inset-auto z-40 w-full h-full sm:w-96 sm:h-[560px] sm:max-h-[80vh] bg-slate-900 sm:border sm:border-slate-800 sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          style={
+            window.innerWidth >= 640
+              ? {
+                  left: Math.min(btnPos.x, window.innerWidth - 384 - MARGIN),
+                  top: Math.min(btnPos.y, window.innerHeight - 560 - MARGIN),
+                }
+              : undefined
+          }
+        >
           {/* Header */}
           <div className="flex items-center justify-between gap-2 p-4 border-b border-slate-800 bg-slate-950/60">
             <div className="flex items-center gap-2 min-w-0">
