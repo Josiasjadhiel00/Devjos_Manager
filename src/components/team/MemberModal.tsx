@@ -49,7 +49,7 @@ export const MemberModal: React.FC<MemberModalProps> = ({
         skills: ['React', 'TypeScript', 'Tailwind'],
       });
     }
-  }, [memberToEdit, isOpen]);
+  }, [memberToEdit?.id, isOpen]);
 
   if (!isOpen) return null;
 
