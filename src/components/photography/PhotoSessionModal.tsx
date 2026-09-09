@@ -68,7 +68,7 @@ export const PhotoSessionModal: React.FC<PhotoSessionModalProps> = ({
         notes: '',
       });
     }
-  }, [sessionToEdit, isOpen, clients]);
+  }, [sessionToEdit?.id, isOpen]);
 
   if (!isOpen) return null;
 
