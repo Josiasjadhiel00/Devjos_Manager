@@ -28,6 +28,8 @@ export const ClientPortalView: React.FC = () => {
     projects,
     quotes,
     photoSessions,
+    galleries,
+    toggleGalleryImageSelection,
     files,
     updateQuote,
     setCurrentView,
@@ -40,10 +42,12 @@ export const ClientPortalView: React.FC = () => {
   const clientProjects = projects.filter(p => p.clientId === activeClientId);
   const clientQuotes = quotes.filter(q => q.clientId === activeClientId);
   const clientSessions = photoSessions.filter(s => s.clientId === activeClientId);
+  // Solo galerías que el estudio marcó explícitamente para compartir con
+  // el cliente — no todas las fotos internas.
+  const clientGalleries = galleries.filter(g => g.clientId === activeClientId && g.clientShared);
   const clientFiles = files.filter(f => f.clientId === activeClientId);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'quotes' | 'gallery' | 'files'>('overview');
-  const [selectedPhotoLikes, setSelectedPhotoLikes] = useState<Record<string, boolean>>({});
   const [approvalFeedback, setApprovalFeedback] = useState('');
   const [justApprovedQuoteId, setJustApprovedQuoteId] = useState<string | null>(null);
 
@@ -51,13 +55,6 @@ export const ClientPortalView: React.FC = () => {
     updateQuote(quoteId, { status: 'Aprobada' });
     setJustApprovedQuoteId(quoteId);
     setTimeout(() => setJustApprovedQuoteId(null), 4000);
-  };
-
-  const togglePhotoLike = (photoId: string) => {
-    setSelectedPhotoLikes(prev => ({
-      ...prev,
-      [photoId]: !prev[photoId],
-    }));
   };
 
   if (!currentClient) {
@@ -147,7 +144,7 @@ export const ClientPortalView: React.FC = () => {
           }`}
         >
           <Camera className="w-4 h-4" />
-          <span>Galerías & Selección ({clientSessions.length})</span>
+          <span>Galerías & Selección ({clientGalleries.length})</span>
         </button>
 
         <button
@@ -331,18 +328,18 @@ export const ClientPortalView: React.FC = () => {
               Haz clic en el corazón de tus fotos favoritas para que nuestro equipo las retome en alta resolución.
             </span>
             <span className="font-mono font-bold text-cyan-400">
-              {Object.values(selectedPhotoLikes).filter(Boolean).length} fotos seleccionadas
+              {clientGalleries.flatMap(g => g.images).filter(img => img.selected).length} fotos seleccionadas
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {clientSessions.flatMap(s => s.gallery).length === 0 ? (
+            {clientGalleries.flatMap(g => g.images.map(img => ({ ...img, galleryId: g.id }))).length === 0 ? (
               <div className="col-span-3 p-8 text-center bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-500 text-xs">
-                No hay galerías de fotos cargadas para este cliente.
+                No hay galerías de fotos compartidas todavía para este cliente.
               </div>
             ) : (
-              clientSessions.flatMap(s => s.gallery).map(photo => {
-                const isLiked = !!selectedPhotoLikes[photo.id];
+              clientGalleries.flatMap(g => g.images.map(img => ({ ...img, galleryId: g.id }))).map(photo => {
+                const isLiked = photo.selected;
                 return (
                   <div
                     key={photo.id}
@@ -350,13 +347,13 @@ export const ClientPortalView: React.FC = () => {
                   >
                     <img
                       src={photo.url}
-                      alt={photo.name}
+                      alt={photo.title}
                       className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
 
                     <button
-                      onClick={() => togglePhotoLike(photo.id)}
+                      onClick={() => toggleGalleryImageSelection(photo.galleryId, photo.id)}
                       className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all ${
                         isLiked
                           ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 scale-110'
@@ -368,7 +365,7 @@ export const ClientPortalView: React.FC = () => {
 
                     <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white">
                       <div>
-                        <p className="font-semibold text-white">{photo.name}</p>
+                        <p className="font-semibold text-white">{photo.title}</p>
                         <p className="text-[10px] text-slate-300">{photo.size}</p>
                       </div>
                       <a
