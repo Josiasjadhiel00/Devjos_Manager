@@ -13,6 +13,7 @@ import {
   MediaProject,
   ProjectFile,
   CalendarEvent,
+  SocialPost,
   TeamMember,
   NotificationItem,
   ActivityLog,
@@ -154,6 +155,7 @@ interface AppContextType {
   mediaProjects: MediaProject[];
   files: ProjectFile[];
   calendarEvents: CalendarEvent[];
+  socialPosts: SocialPost[];
   team: TeamMember[];
   notifications: NotificationItem[];
   activityLogs: ActivityLog[];
@@ -215,6 +217,9 @@ interface AppContextType {
   addCalendarEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   deleteCalendarEvent: (id: string) => void;
+  addSocialPost: (data: Omit<SocialPost, 'id'>) => SocialPost;
+  updateSocialPost: (id: string, updates: Partial<SocialPost>) => void;
+  deleteSocialPost: (id: string) => void;
 
   addTeamMember: (member: Omit<TeamMember, 'id'>) => void;
   updateTeamMember: (id: string, updates: Partial<TeamMember>) => void;
@@ -299,6 +304,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
+  const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
 
@@ -364,6 +370,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCalendarEvents(data.calendarEvents || []);
         setTeam(data.team || []);
         setNotifications(data.notifications || []);
+        setSocialPosts(data.socialPosts || []);
         setIsDatabaseConnected(true);
         setSyncStatus('connected');
         return data;
@@ -1572,6 +1579,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch(e => { console.error('Sync delete calendar event to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino el evento de la base de datos.', 'system'); });
   };
 
+  // CONTENIDO SOCIAL CRUD
+  const addSocialPost = (data: Omit<SocialPost, 'id'>): SocialPost => {
+    const newPost: SocialPost = {
+      ...data,
+      id: 'post-' + Date.now(),
+    };
+    setSocialPosts(prev => [newPost, ...prev]);
+    addActivity('Creó publicación de contenido social', 'Contenido', newPost.title);
+
+    syncToBackend('/api/social-posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPost),
+    }).catch(e => { console.error('Sync social post to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se guardo la publicacion en la base de datos.', 'system'); });
+
+    return newPost;
+  };
+
+  const updateSocialPost = (id: string, updates: Partial<SocialPost>) => {
+    setSocialPosts(prev => prev.map(p => (p.id === id ? { ...p, ...updates } : p)));
+
+    syncToBackend(`/api/social-posts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(e => { console.error('Sync update social post to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se actualizo la publicacion en la base de datos.', 'system'); });
+  };
+
+  const deleteSocialPost = (id: string) => {
+    setSocialPosts(prev => prev.filter(p => p.id !== id));
+
+    syncToBackend(`/api/social-posts/${id}`, { method: 'DELETE' })
+      .catch(e => { console.error('Sync delete social post to SQL info:', e); setSyncStatus('offline'); addNotification('Error de sincronizacion', 'No se elimino la publicacion de la base de datos.', 'system'); });
+  };
+
   // TEAM CRUD
   const addTeamMember = (data: Omit<TeamMember, 'id'>) => {
     const newMember: TeamMember = {
@@ -1766,6 +1808,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         mediaProjects,
         files,
         calendarEvents,
+        socialPosts,
         team,
         notifications,
         activityLogs,
@@ -1813,6 +1856,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addCalendarEvent,
         updateCalendarEvent,
         deleteCalendarEvent,
+        addSocialPost,
+        updateSocialPost,
+        deleteSocialPost,
         addTeamMember,
         updateTeamMember,
         deleteTeamMember,
