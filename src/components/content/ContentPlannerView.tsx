@@ -14,69 +14,14 @@ import {
   Send,
   Building2,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Badge } from '../ui/StatCard';
-
-interface SocialPost {
-  id: string;
-  clientId: string;
-  platform: 'Instagram' | 'TikTok' | 'Facebook' | 'LinkedIn';
-  contentType: 'Reel' | 'Carrusel' | 'Post Único' | 'Historia';
-  title: string;
-  copyText: string;
-  hashtags: string;
-  scheduledDate: string;
-  scheduledTime: string;
-  status: 'Idea' | 'Guion listo' | 'Diseñado' | 'Aprobado por Cliente' | 'Publicado';
-  mediaUrl?: string;
-}
-
-const initialPosts: SocialPost[] = [
-  {
-    id: 'post-1',
-    clientId: 'cli-1',
-    platform: 'Instagram',
-    contentType: 'Carrusel',
-    title: '5 Consejos para Optimizar la Conversión de tu Ecommerce en 2026',
-    copyText: '¿Sabías que un checkout simplificado aumenta las ventas hasta un 35%? Desliza para ver la guía paso a paso 🚀.',
-    hashtags: '#Ecommerce #ConversionRate #UXDesign #DevJosStudio',
-    scheduledDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    scheduledTime: '18:00',
-    status: 'Aprobado por Cliente',
-    mediaUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'post-2',
-    clientId: 'cli-2',
-    platform: 'TikTok',
-    contentType: 'Reel',
-    title: 'Detrás de Cámaras: Sesión Fotográfica Gastronómica',
-    copyText: 'Cómo iluminamos el nuevo menú de temporada con luces continuas Aputure 📸',
-    hashtags: '#FoodPhotography #BehindTheScenes #StudioLighting',
-    scheduledDate: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
-    scheduledTime: '12:30',
-    status: 'Diseñado',
-    mediaUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'post-3',
-    clientId: 'cli-3',
-    platform: 'LinkedIn',
-    contentType: 'Post Único',
-    title: 'Lanzamiento de Plataforma Cloud Empresarial',
-    copyText: 'Orgullosos de presentar la nueva infraestructura cloud que desarrollamos junto al equipo de NexaCorp.',
-    hashtags: '#CloudSolutions #SoftwareEngineering #TechLaunch',
-    scheduledDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
-    scheduledTime: '09:00',
-    status: 'Guion listo',
-    mediaUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80',
-  },
-];
+import { SocialPost } from '../../types';
 
 export const ContentPlannerView: React.FC = () => {
-  const { clients } = useApp();
-  const [posts, setPosts] = useState<SocialPost[]>(initialPosts);
+  const { clients, socialPosts: posts, addSocialPost, updateSocialPost, deleteSocialPost } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -103,8 +48,7 @@ export const ContentPlannerView: React.FC = () => {
     e.preventDefault();
     if (!postTitle.trim()) return;
 
-    const newPost: SocialPost = {
-      id: 'post-' + Date.now(),
+    addSocialPost({
       clientId: postClientId,
       platform: postPlatform,
       contentType: postType,
@@ -115,9 +59,8 @@ export const ContentPlannerView: React.FC = () => {
       scheduledTime: postTime,
       status: 'Idea',
       mediaUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
-    };
+    });
 
-    setPosts(prev => [newPost, ...prev]);
     setIsModalOpen(false);
     setPostTitle('');
     setPostCopy('');
@@ -125,7 +68,7 @@ export const ContentPlannerView: React.FC = () => {
   };
 
   const handleUpdateStatus = (id: string, newStatus: SocialPost['status']) => {
-    setPosts(prev => prev.map(p => (p.id === id ? { ...p, status: newStatus } : p)));
+    updateSocialPost(id, { status: newStatus });
   };
 
   return (
@@ -205,6 +148,17 @@ export const ContentPlannerView: React.FC = () => {
                     {post.contentType}
                   </span>
                 </div>
+                <button
+                  onClick={() => {
+                    if (confirm('¿Eliminar esta publicación? No se puede deshacer.')) {
+                      deleteSocialPost(post.id);
+                    }
+                  }}
+                  className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 backdrop-blur-md text-white hover:bg-rose-500/80 transition-colors opacity-0 group-hover:opacity-100"
+                  title="Eliminar publicación"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white">
                   <span className="flex items-center gap-1 text-[11px] font-medium text-slate-300">
                     <Calendar className="w-3.5 h-3.5 text-pink-400" />
