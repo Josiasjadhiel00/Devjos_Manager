@@ -308,6 +308,7 @@ export async function getAllAppData() {
       calendarEventsList,
       teamList,
       notificationsList,
+      socialPostsList,
     ] = await Promise.all([
       db.select().from(schema.studioSettings).where(eq(schema.studioSettings.id, 'default')).catch(() => []),
       db.select().from(schema.clients).catch(() => []),
@@ -325,6 +326,7 @@ export async function getAllAppData() {
       db.select().from(schema.calendarEvents).catch(() => []),
       db.select().from(schema.teamMembers).catch(() => []),
       db.select().from(schema.notifications).catch(() => []),
+      db.select().from(schema.socialPosts).catch(() => []),
     ]);
 
     const settings = settingsRows && settingsRows[0] ? JSON.parse(settingsRows[0].settingsJson) : initialSettings;
@@ -373,6 +375,7 @@ export async function getAllAppData() {
       notifications: (notificationsList || [])
         .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))
         .slice(0, 50),
+      socialPosts: socialPostsList || [],
     };
   } catch (error) {
     console.error('Database query failed in getAllAppData:', error);
@@ -1262,6 +1265,58 @@ export async function clearAllNotificationsFromDb() {
   } catch (error) {
     console.error('Failed to clear notifications:', error);
     throw new Error('Database error clearing notifications', { cause: error });
+  }
+}
+
+// Social Posts operations (Contenido Social)
+export async function insertSocialPost(data: any) {
+  try {
+    const payload = {
+      id: data.id,
+      clientId: data.clientId || '',
+      platform: data.platform || 'Instagram',
+      contentType: data.contentType || 'Post Único',
+      title: data.title || '',
+      copyText: data.copyText || '',
+      hashtags: data.hashtags || '',
+      scheduledDate: data.scheduledDate || '',
+      scheduledTime: data.scheduledTime || '',
+      status: data.status || 'Idea',
+      mediaUrl: data.mediaUrl || '',
+    };
+    const result = await db.insert(schema.socialPosts).values(payload).onConflictDoUpdate({
+      target: schema.socialPosts.id,
+      set: payload,
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to insert social post:', error);
+    throw new Error('Database error inserting social post', { cause: error });
+  }
+}
+
+export async function updateSocialPostInDb(id: string, updates: any) {
+  try {
+    const payload: any = { ...updates };
+    delete payload.id;
+    const result = await db.update(schema.socialPosts)
+      .set(payload)
+      .where(eq(schema.socialPosts.id, id))
+      .returning();
+    return result[0];
+  } catch (error) {
+    console.error('Failed to update social post:', error);
+    throw new Error('Database error updating social post', { cause: error });
+  }
+}
+
+export async function deleteSocialPostFromDb(id: string) {
+  try {
+    await db.delete(schema.socialPosts).where(eq(schema.socialPosts.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete social post:', error);
+    throw new Error('Database error deleting social post', { cause: error });
   }
 }
 
