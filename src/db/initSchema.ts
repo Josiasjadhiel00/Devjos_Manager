@@ -231,6 +231,21 @@ CREATE TABLE IF NOT EXISTS "studio_settings" (
   "updated_at" timestamp DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS "social_posts" (
+  "id" text PRIMARY KEY NOT NULL,
+  "client_id" text DEFAULT '',
+  "platform" text DEFAULT 'Instagram' NOT NULL,
+  "content_type" text DEFAULT 'Post Único' NOT NULL,
+  "title" text NOT NULL,
+  "copy_text" text DEFAULT '',
+  "hashtags" text DEFAULT '',
+  "scheduled_date" text DEFAULT '',
+  "scheduled_time" text DEFAULT '',
+  "status" text DEFAULT 'Idea' NOT NULL,
+  "media_url" text DEFAULT '',
+  "created_at" timestamp DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS "notifications" (
   "id" text PRIMARY KEY NOT NULL,
   "title" text NOT NULL,

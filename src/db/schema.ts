@@ -241,6 +241,22 @@ export const studioSettings = pgTable('studio_settings', {
 
 // Notifications table — antes vivían solo en memoria del navegador y se
 // reiniciaban con datos de muestra en cada carga de página.
+// Social Posts table (Contenido Social / Content Planner)
+export const socialPosts = pgTable('social_posts', {
+  id: text('id').primaryKey(),
+  clientId: text('client_id').default(''),
+  platform: text('platform').notNull().default('Instagram'),
+  contentType: text('content_type').notNull().default('Post Único'),
+  title: text('title').notNull(),
+  copyText: text('copy_text').default(''),
+  hashtags: text('hashtags').default(''),
+  scheduledDate: text('scheduled_date').default(''),
+  scheduledTime: text('scheduled_time').default(''),
+  status: text('status').notNull().default('Idea'),
+  mediaUrl: text('media_url').default(''),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 export const notifications = pgTable('notifications', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
