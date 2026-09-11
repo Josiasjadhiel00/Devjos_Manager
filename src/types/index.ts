@@ -332,6 +332,20 @@ export interface CalendarEvent {
   isCompleted?: boolean;
 }
 
+export interface SocialPost {
+  id: string;
+  clientId: string;
+  platform: 'Instagram' | 'TikTok' | 'Facebook' | 'LinkedIn';
+  contentType: 'Reel' | 'Carrusel' | 'Post Único' | 'Historia';
+  title: string;
+  copyText: string;
+  hashtags: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  status: 'Idea' | 'Guion listo' | 'Diseñado' | 'Aprobado por Cliente' | 'Publicado';
+  mediaUrl?: string;
+}
+
 export interface TeamMember {
   id: string;
   name: string;
