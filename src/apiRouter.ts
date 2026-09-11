@@ -45,6 +45,9 @@ import {
   markNotificationReadInDb,
   deleteNotificationFromDb,
   clearAllNotificationsFromDb,
+  insertSocialPost,
+  updateSocialPostInDb,
+  deleteSocialPostFromDb,
   syncAllAppData,
   updateSettingsInDb,
 } from './db/queries.ts';
@@ -717,6 +720,37 @@ apiRouter.delete('/notifications', requireAuth, async (req: AuthRequest, res) =>
   } catch (error: any) {
     console.error('Error clearing notifications from DB:', error);
     res.status(500).json({ error: error.message || 'Failed to clear notifications' });
+  }
+});
+
+// Social Posts Endpoints (Contenido Social)
+apiRouter.post('/social-posts', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const newPost = await insertSocialPost(req.body);
+    res.status(201).json(newPost);
+  } catch (error: any) {
+    console.error('Error saving social post in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to save social post' });
+  }
+});
+
+apiRouter.put('/social-posts/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const updated = await updateSocialPostInDb(req.params.id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating social post in DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to update social post' });
+  }
+});
+
+apiRouter.delete('/social-posts/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await deleteSocialPostFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error: any) {
+    console.error('Error deleting social post from DB:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete social post' });
   }
 });
 
