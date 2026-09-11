@@ -30,6 +30,7 @@ __export(schema_exports, {
   projects: () => projects,
   quotes: () => quotes,
   services: () => services,
+  socialPosts: () => socialPosts,
   studioSettings: () => studioSettings,
   tasks: () => tasks,
   teamMembers: () => teamMembers,
@@ -242,6 +243,20 @@ var studioSettings = pgTable("studio_settings", {
   id: text("id").primaryKey(),
   settingsJson: text("settings_json").notNull(),
   updatedAt: timestamp("updated_at").defaultNow()
+});
+var socialPosts = pgTable("social_posts", {
+  id: text("id").primaryKey(),
+  clientId: text("client_id").default(""),
+  platform: text("platform").notNull().default("Instagram"),
+  contentType: text("content_type").notNull().default("Post \xDAnico"),
+  title: text("title").notNull(),
+  copyText: text("copy_text").default(""),
+  hashtags: text("hashtags").default(""),
+  scheduledDate: text("scheduled_date").default(""),
+  scheduledTime: text("scheduled_time").default(""),
+  status: text("status").notNull().default("Idea"),
+  mediaUrl: text("media_url").default(""),
+  createdAt: timestamp("created_at").defaultNow()
 });
 var notifications = pgTable("notifications", {
   id: text("id").primaryKey(),
@@ -519,6 +534,21 @@ CREATE TABLE IF NOT EXISTS "studio_settings" (
   "id" text PRIMARY KEY NOT NULL,
   "settings_json" text NOT NULL,
   "updated_at" timestamp DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "social_posts" (
+  "id" text PRIMARY KEY NOT NULL,
+  "client_id" text DEFAULT '',
+  "platform" text DEFAULT 'Instagram' NOT NULL,
+  "content_type" text DEFAULT 'Post \xDAnico' NOT NULL,
+  "title" text NOT NULL,
+  "copy_text" text DEFAULT '',
+  "hashtags" text DEFAULT '',
+  "scheduled_date" text DEFAULT '',
+  "scheduled_time" text DEFAULT '',
+  "status" text DEFAULT 'Idea' NOT NULL,
+  "media_url" text DEFAULT '',
+  "created_at" timestamp DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "notifications" (
@@ -1986,7 +2016,8 @@ async function getAllAppData() {
       filesList,
       calendarEventsList,
       teamList,
-      notificationsList
+      notificationsList,
+      socialPostsList
     ] = await Promise.all([
       db.select().from(studioSettings).where(eq(studioSettings.id, "default")).catch(() => []),
       db.select().from(clients).catch(() => []),
@@ -2003,7 +2034,8 @@ async function getAllAppData() {
       db.select().from(projectFiles).catch(() => []),
       db.select().from(calendarEvents).catch(() => []),
       db.select().from(teamMembers).catch(() => []),
-      db.select().from(notifications).catch(() => [])
+      db.select().from(notifications).catch(() => []),
+      db.select().from(socialPosts).catch(() => [])
     ]);
     const settings = settingsRows && settingsRows[0] ? JSON.parse(settingsRows[0].settingsJson) : initialSettings;
     const quotes2 = (quotesList || []).map((q) => ({
@@ -2042,7 +2074,8 @@ async function getAllAppData() {
       files: filesList || [],
       calendarEvents: calendarEventsList || [],
       team,
-      notifications: (notificationsList || []).sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || "")).slice(0, 50)
+      notifications: (notificationsList || []).sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || "")).slice(0, 50),
+      socialPosts: socialPostsList || []
     };
   } catch (error) {
     console.error("Database query failed in getAllAppData:", error);
@@ -2807,6 +2840,51 @@ async function clearAllNotificationsFromDb() {
     throw new Error("Database error clearing notifications", { cause: error });
   }
 }
+async function insertSocialPost(data) {
+  try {
+    const payload = {
+      id: data.id,
+      clientId: data.clientId || "",
+      platform: data.platform || "Instagram",
+      contentType: data.contentType || "Post \xDAnico",
+      title: data.title || "",
+      copyText: data.copyText || "",
+      hashtags: data.hashtags || "",
+      scheduledDate: data.scheduledDate || "",
+      scheduledTime: data.scheduledTime || "",
+      status: data.status || "Idea",
+      mediaUrl: data.mediaUrl || ""
+    };
+    const result = await db.insert(socialPosts).values(payload).onConflictDoUpdate({
+      target: socialPosts.id,
+      set: payload
+    }).returning();
+    return result[0];
+  } catch (error) {
+    console.error("Failed to insert social post:", error);
+    throw new Error("Database error inserting social post", { cause: error });
+  }
+}
+async function updateSocialPostInDb(id, updates) {
+  try {
+    const payload = { ...updates };
+    delete payload.id;
+    const result = await db.update(socialPosts).set(payload).where(eq(socialPosts.id, id)).returning();
+    return result[0];
+  } catch (error) {
+    console.error("Failed to update social post:", error);
+    throw new Error("Database error updating social post", { cause: error });
+  }
+}
+async function deleteSocialPostFromDb(id) {
+  try {
+    await db.delete(socialPosts).where(eq(socialPosts.id, id));
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete social post:", error);
+    throw new Error("Database error deleting social post", { cause: error });
+  }
+}
 
 // src/lib/firebase-admin.ts
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
@@ -3457,6 +3535,33 @@ apiRouter.delete("/notifications", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error clearing notifications from DB:", error);
     res.status(500).json({ error: error.message || "Failed to clear notifications" });
+  }
+});
+apiRouter.post("/social-posts", requireAuth, async (req, res) => {
+  try {
+    const newPost = await insertSocialPost(req.body);
+    res.status(201).json(newPost);
+  } catch (error) {
+    console.error("Error saving social post in DB:", error);
+    res.status(500).json({ error: error.message || "Failed to save social post" });
+  }
+});
+apiRouter.put("/social-posts/:id", requireAuth, async (req, res) => {
+  try {
+    const updated = await updateSocialPostInDb(req.params.id, req.body);
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating social post in DB:", error);
+    res.status(500).json({ error: error.message || "Failed to update social post" });
+  }
+});
+apiRouter.delete("/social-posts/:id", requireAuth, async (req, res) => {
+  try {
+    await deleteSocialPostFromDb(req.params.id);
+    res.json({ success: true, id: req.params.id });
+  } catch (error) {
+    console.error("Error deleting social post from DB:", error);
+    res.status(500).json({ error: error.message || "Failed to delete social post" });
   }
 });
 apiRouter.post("/sync-all", requireAuth, async (req, res) => {
